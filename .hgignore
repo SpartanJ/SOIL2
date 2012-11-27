@@ -1,0 +1,6 @@
+syntax: glob 
+bin/soil2*
+obj/*
+make/*
+lib/*
+*.DS_Store*
