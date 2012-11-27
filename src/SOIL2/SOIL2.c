@@ -1,8 +1,11 @@
 /*
+ 	Fork by Martin Lucas Golini
+ 	 
+ 	Original author
 	Jonathan Dummer
 	2007-07-26-10.36
 
-	Simple OpenGL Image Library
+	Simple OpenGL Image Library 2
 
 	Public Domain
 	using Sean Barret's stb_image as a base

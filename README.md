@@ -32,10 +32,13 @@ Public Domain
     * GIF
     * PIC 
 
+
 * Writeable Image Formats:
     * TGA - Greyscale or RGB or RGBA, uncompressed
     * BMP - RGB, uncompressed
     * DDS - RGB as DXT1, or RGBA as DXT5
+    * PNG
+
 
 * Can load an image file directly into a 2D OpenGL texture, optionally performing the following functions:
     * Can generate a new texture handle, or reuse one specified
@@ -51,17 +54,18 @@ Public Domain
     * Can load rectangluar textures for GUI elements or splash screens (requires GL_ARB/EXT/NV_texture_rectangle)
 Can decompress images from RAM (e.g. via PhysicsFS or similar) into an OpenGL texture (same features as regular 2D textures, above)
 
+
 * Can load cube maps directly into an OpenGL texture (same features as regular 2D textures, above)
 * Can take six image files directly into an OpenGL cube map texture
 Can take a single image file where width = 6*height (or vice versa), split it into an OpenGL cube map texture
 * No external dependencies
 * Tiny
-* Cross platform (Windows, Linux, Mac OS X, FreeBSD, Solaris, Haiku, iOS, Android)
+* Cross platform (Windows, Linux, Mac OS X, FreeBSD, Solaris, Haiku, iOS, Android, and probably any platform with OpenGL support)
 
 
 **Difference between SOIL2 and SOIL:**
 --------------------------------------
-* Updated stb_image to the lastest version.
+* Up to date stb_image version.
 
 * Added support for Android and iOS.
 
@@ -72,6 +76,8 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 * Save images to PNG ( thanks to additions to stb_image ).
 
 * `SOIL_create_OGL_texture` expects width and height parameters as pointers, since the real size of the texture loaded could change. This occurs when GL_ARB_texture_non_power_of_two extension is not present and the user tries to load a non-power of two texture.
+
+* And some minor fixes.
 
 **TODO:**
 --------
@@ -94,6 +100,7 @@ or
 `premake4 xcode4` to generate Xcode 4 project.
 
 The static library will be located in `lib` folder project subdirectory.
+The test will be located in `bin`, you neeed [GLFW](http://www.glfw.org/) installed for the test.
 
 **Usage:**
 ----------

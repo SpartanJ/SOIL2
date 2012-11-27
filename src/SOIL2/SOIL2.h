@@ -6,7 +6,7 @@
 	Original author Jonathan Dummer
 	2007-07-26-10.36
 
-	Simple OpenGL Image Library
+	Simple OpenGL Image Library 2
 
 	A tiny c library for uploading images as
 	textures into OpenGL.  Also saving and
