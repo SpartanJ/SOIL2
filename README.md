@@ -4,7 +4,7 @@ Simple OpenGL Image Library 2
 **Introduction:**
 --------------
 
-**SOIL2** is a fork of the Jonathan Dummer [Simple OpenGL Image Library](http://www.lonesock.net/soil.html). 
+**SOIL2** is a fork of the Jonathan Dummer's [Simple OpenGL Image Library](http://www.lonesock.net/soil.html). 
 
 **SOIL2** is a tiny C library used primarily for uploading textures into OpenGL.
 It is based on [stb_image](http://www.nothings.org/stb_image.c), the public domain code from Sean Barrett.
@@ -213,3 +213,8 @@ Simply include SOIL2.h in your C or C++ file, compile the .c files or link to th
     /* done with the heightmap, free up the RAM */
     SOIL_free_image_data( ht_map );
 
+
+**Clarifications**
+----------------
+
+The icon used for the project is part of the [Haiku®'s Icons](http://www.haiku-inc.org/haiku-icons.html), [MIT licensed](http://www.opensource.org/licenses/mit-license.html).
