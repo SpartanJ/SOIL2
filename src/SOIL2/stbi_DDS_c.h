@@ -135,6 +135,13 @@ int      stbi_dds_test_memory      (stbi_uc const *buffer, int len)
    return stbi_dds_test(&s);
 }
 
+int      stbi_dds_test_callbacks      (stbi_io_callbacks const *clbk, void *user)
+{
+   stbi s;
+   start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
+   return stbi_dds_test(&s);
+}
+
 //	helper functions
 int stbi_convert_bit_range( int c, int from_bits, int to_bits )
 {
@@ -363,6 +370,13 @@ int stbi_dds_info_from_memory (stbi_uc const *buffer, int len, int *x, int *y, i
 {
 	stbi s;
 	start_mem(&s,buffer, len);
+	return stbi_dds_info( &s, x, y, comp, iscompressed );
+}
+
+int stbi_dds_info_from_callbacks (stbi_io_callbacks const *clbk, void *user, int *x, int *y, int *comp, int *iscompressed)
+{
+	stbi s;
+	start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
 	return stbi_dds_info( &s, x, y, comp, iscompressed );
 }
 
@@ -631,5 +645,12 @@ stbi_uc *stbi_dds_load_from_memory (stbi_uc const *buffer, int len, int *x, int 
 {
 	stbi s;
    start_mem(&s,buffer, len);
+   return stbi_dds_load(&s,x,y,comp,req_comp);
+}
+
+stbi_uc *stbi_dds_load_from_callbacks (stbi_io_callbacks const *clbk, void *user, int *x, int *y, int *comp, int req_comp)
+{
+	stbi s;
+   start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
    return stbi_dds_load(&s,x,y,comp,req_comp);
 }
