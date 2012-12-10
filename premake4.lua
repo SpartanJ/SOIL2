@@ -28,7 +28,7 @@ solution "SOIL2"
 		files { "src/test/*.cpp" }
 
 		configuration "windows"
-			links {"glu32", "opengl32", "gdi32", "winmm", "user32"}
+			links {"gdi32", "winmm", "user32","glfw","glu32", "opengl32"}
 
 		configuration "linux"
 			links {"GL","glfw"}

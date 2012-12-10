@@ -7,6 +7,13 @@
 #include "../SOIL2/stb_image.h"
 
 #include <GL/glfw.h>
+#ifndef GL_REFLECTION_MAP
+#define GL_REFLECTION_MAP 0x8512
+#endif
+
+#ifndef GL_TEXTURE_CUBE_MAP
+#define GL_TEXTURE_CUBE_MAP 0x8513
+#endif
 
 int main(  int argc, char **argv  )
 {
