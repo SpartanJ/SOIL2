@@ -100,7 +100,7 @@ or
 `premake4 xcode4` to generate Xcode 4 project.
 
 The static library will be located in `lib` folder project subdirectory.
-The test will be located in `bin`, you neeed [GLFW](http://www.glfw.org/) installed to be able to build the test.
+The test will be located in `bin`, you need [GLFW](http://www.glfw.org/) installed to be able to build the test.
 
 **Usage:**
 ----------
