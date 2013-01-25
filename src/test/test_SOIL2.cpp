@@ -72,6 +72,7 @@ int main(  int argc, char **argv  )
 			SOIL_FLAG_POWER_OF_TWO
 			| SOIL_FLAG_MIPMAPS
 			| SOIL_FLAG_DDS_LOAD_DIRECT
+			| SOIL_FLAG_PVR_LOAD_DIRECT
 			);
 
 	time_me = glfwGetTime() - time_me;
@@ -122,7 +123,10 @@ int main(  int argc, char **argv  )
 					load_me.c_str(),
 					SOIL_LOAD_AUTO,
 					SOIL_CREATE_NEW_ID,
-					SOIL_FLAG_POWER_OF_TWO | SOIL_FLAG_MIPMAPS | SOIL_FLAG_DDS_LOAD_DIRECT
+					SOIL_FLAG_POWER_OF_TWO
+					| SOIL_FLAG_MIPMAPS
+					| SOIL_FLAG_DDS_LOAD_DIRECT
+					| SOIL_FLAG_PVR_LOAD_DIRECT
 					);
 			
 			time_me = glfwGetTime() - time_me;

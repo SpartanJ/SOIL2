@@ -607,7 +607,7 @@ static stbi_uc * stbi_dds_load(stbi *s, int *x, int *y, int *comp, int req_comp)
 		if( req_comp != s->img_n )
 		{
 			dds_data = convert_format( dds_data, s->img_n, req_comp, s->img_x, s->img_y );
-			*comp = s->img_n;
+			*comp = req_comp;
 		}
 	} else
 	{
@@ -630,7 +630,7 @@ stbi_uc *stbi_dds_load_from_file   (FILE *f,                  int *x, int *y, in
 	return stbi_dds_load(&s,x,y,comp,req_comp);
 }
 
-stbi_uc *stbi_dds_load_from_path             (char *filename,           int *x, int *y, int *comp, int req_comp)
+stbi_uc *stbi_dds_load_from_path             (const char *filename,           int *x, int *y, int *comp, int req_comp)
 {
    stbi_uc *data;
    FILE *f = fopen(filename, "rb");

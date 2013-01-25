@@ -261,6 +261,11 @@ extern void stbi_install_YCbCr_to_RGB(stbi_YCbCr_to_RGB_run func);
 #include "stbi_DDS.h"
 #endif
 
+#ifndef STBI_NO_PVR
+#include "stbi_pvr.h"
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif

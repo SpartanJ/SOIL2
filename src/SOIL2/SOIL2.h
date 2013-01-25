@@ -92,10 +92,11 @@ enum
 	SOIL_FLAG_MULTIPLY_ALPHA: for using (GL_ONE,GL_ONE_MINUS_SRC_ALPHA) blending
 	SOIL_FLAG_INVERT_Y: flip the image vertically
 	SOIL_FLAG_COMPRESS_TO_DXT: if the card can display them, will convert RGB to DXT1, RGBA to DXT5
-	SOIL_FLAG_DDS_LOAD_DIRECT: will load DDS files directly without _ANY_ additional processing
+	SOIL_FLAG_DDS_LOAD_DIRECT: will load DDS files directly without _ANY_ additional processing ( if supported )
 	SOIL_FLAG_NTSC_SAFE_RGB: clamps RGB components to the range [16,235]
 	SOIL_FLAG_CoCg_Y: Google YCoCg; RGB=>CoYCg, RGBA=>CoCgAY
 	SOIL_FLAG_TEXTURE_RECTANGE: uses ARB_texture_rectangle ; pixel indexed & no repeat or MIPmaps or cubemaps
+	SOIL_FLAG_PVR_LOAD_DIRECT: will load PVR files directly without _ANY_ additional processing ( if supported )
 **/
 enum
 {
@@ -108,7 +109,8 @@ enum
 	SOIL_FLAG_DDS_LOAD_DIRECT = 64,
 	SOIL_FLAG_NTSC_SAFE_RGB = 128,
 	SOIL_FLAG_CoCg_Y = 256,
-	SOIL_FLAG_TEXTURE_RECTANGLE = 512
+	SOIL_FLAG_TEXTURE_RECTANGLE = 512,
+	SOIL_FLAG_PVR_LOAD_DIRECT = 1024
 };
 
 /**
@@ -432,13 +434,30 @@ const char*
 		void
 	);
 
+/** Loads the DDS texture directly to the GPU memory ( if supported ) */
 unsigned int SOIL_direct_load_DDS(
 		const char *filename,
 		unsigned int reuse_texture_ID,
 		int flags,
 		int loading_as_cubemap );
 
+/** Loads the DDS texture directly to the GPU memory ( if supported ) */
 unsigned int SOIL_direct_load_DDS_from_memory(
+		const unsigned char *const buffer,
+		int buffer_length,
+		unsigned int reuse_texture_ID,
+		int flags,
+		int loading_as_cubemap );
+
+/** Loads the PVR texture directly to the GPU memory ( if supported ) */
+unsigned int SOIL_direct_load_PVR(
+		const char *filename,
+		unsigned int reuse_texture_ID,
+		int flags,
+		int loading_as_cubemap );
+
+/** Loads the PVR texture directly to the GPU memory ( if supported ) */
+unsigned int SOIL_direct_load_PVR_from_memory(
 		const unsigned char *const buffer,
 		int buffer_length,
 		unsigned int reuse_texture_ID,

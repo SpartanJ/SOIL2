@@ -231,6 +231,12 @@ static int stbi_dds_test(stbi *s);
 static stbi_uc * stbi_dds_load(stbi *s, int *x, int *y, int *comp, int req_comp);
 #endif
 
+#ifndef STBI_NO_PVR
+#include "stbi_pvr.h"
+static int stbi_pvr_test(stbi *s);
+static stbi_uc * stbi_pvr_load(stbi *s, int *x, int *y, int *comp, int req_comp);
+#endif
+
 // this is not threadsafe
 static const char *failure_reason;
 
@@ -280,6 +286,9 @@ static unsigned char *stbi_load_main(stbi *s, int *x, int *y, int *comp, int req
    if (stbi_pic_test(s))  return stbi_pic_load(s,x,y,comp,req_comp);
    #ifndef STBI_NO_DDS
    if (stbi_dds_test(s))  return stbi_dds_load(s,x,y,comp,req_comp);
+   #endif
+   #ifndef STBI_NO_PVR
+   if (stbi_pvr_test(s))  return stbi_pvr_load(s,x,y,comp,req_comp);
    #endif
    #ifndef STBI_NO_HDR
    if (stbi_hdr_test(s)) {
@@ -2692,7 +2701,7 @@ static int shiftsigned(int v, int shift, int bits)
 static stbi_uc *bmp_load(stbi *s, int *x, int *y, int *comp, int req_comp)
 {
    uint8 *out;
-   unsigned int mr=0,mg=0,mb=0,ma=0, fake_a=0;
+   unsigned int mr=0,mg=0,mb=0,ma=0/*, fake_a=0*/;
    stbi_uc pal[256][4];
    int psize=0,i,j,compress=0,width;
    int bpp, flip_vertically, pad, target, offset, hsz;
@@ -2741,7 +2750,7 @@ static stbi_uc *bmp_load(stbi *s, int *x, int *y, int *comp, int req_comp)
                   mg = 0xffu <<  8;
                   mb = 0xffu <<  0;
                   ma = 0xffu << 24;
-                  fake_a = 1; // @TODO: check for cases like alpha value is all 0 and switch it to 255
+				  /*fake_a = 1;*/ // @TODO: check for cases like alpha value is all 0 and switch it to 255
                } else {
                   mr = 31u << 10;
                   mg = 31u <<  5;
@@ -4164,6 +4173,11 @@ static int stbi_hdr_info(stbi *s, int *x, int *y, int *comp)
 #include "stbi_DDS_c.h"
 #endif
 
+//	add in my pvr loading support
+#ifndef STBI_NO_PVR
+#include "stbi_pvr_c.h"
+#endif
+
 static int stbi_bmp_info(stbi *s, int *x, int *y, int *comp)
 {
    int hsz;
@@ -4285,6 +4299,10 @@ static int stbi_info_main(stbi *s, int *x, int *y, int *comp)
    #ifndef STBI_NO_DDS
    if (stbi_dds_info(s, x, y, comp, NULL))
        return 1;
+   #endif
+   #ifndef STBI_NO_PVR
+   if (stbi_pvr_info(s, x, y, comp, NULL))
+	   return 1;
    #endif
    #ifndef STBI_NO_HDR
    if (stbi_hdr_info(s, x, y, comp))
