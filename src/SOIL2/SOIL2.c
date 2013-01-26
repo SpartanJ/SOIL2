@@ -2393,6 +2393,60 @@ int query_cubemap_capability( void )
 	return has_cubemap_capability;
 }
 
+static P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC get_glCompressedTexImage2D_addr()
+{
+	/*	and find the address of the extension function	*/
+	P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr = NULL;
+	
+#if defined( SOIL_GLES2 ) || defined( SOIL_GLES1 )
+	ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)&glCompressedTexImage2D;
+#elif defined( WIN32 )
+	ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)
+	wglGetProcAddress
+	(
+	 "glCompressedTexImage2DARB"
+	 );
+#elif defined(__APPLE__) || defined(__APPLE_CC__)
+	/*	I can't test this Apple stuff!	*/
+	CFBundleRef bundle;
+	CFURLRef bundleURL =
+	CFURLCreateWithFileSystemPath(
+								  kCFAllocatorDefault,
+								  CFSTR("/System/Library/Frameworks/OpenGL.framework"),
+								  kCFURLPOSIXPathStyle,
+								  true );
+	CFStringRef extensionName =
+	CFStringCreateWithCString(
+							  kCFAllocatorDefault,
+							  "glCompressedTexImage2DARB",
+							  kCFStringEncodingASCII );
+	bundle = CFBundleCreate( kCFAllocatorDefault, bundleURL );
+	assert( bundle != NULL );
+	ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)
+	CFBundleGetFunctionPointerForName
+	(
+	 bundle, extensionName
+	 );
+	CFRelease( bundleURL );
+	CFRelease( extensionName );
+	CFRelease( bundle );
+#elif defined( SOIL_X11_PLATFORM )
+	ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)
+#if !defined(GLX_VERSION_1_4)
+	glXGetProcAddressARB
+#else
+	glXGetProcAddress
+#endif
+	(
+	 (const GLubyte *)"glCompressedTexImage2DARB"
+	 );
+#else
+	ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)&glCompressedTexImage2D;
+#endif
+	
+	return ext_addr;
+}
+
 int query_DXT_capability( void )
 {
 	/*	check for the capability	*/
@@ -2407,54 +2461,7 @@ int query_DXT_capability( void )
 			has_DXT_capability = SOIL_CAPABILITY_NONE;
 		} else
 		{
-			/*	and find the address of the extension function	*/
-			P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr = NULL;
-
-			#if defined( SOIL_GLES2 ) || defined( SOIL_GLES1 )
-				ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)&glCompressedTexImage2D;
-			#elif defined( WIN32 )
-				ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)
-						wglGetProcAddress
-						(
-							"glCompressedTexImage2DARB"
-						);
-			#elif defined(__APPLE__) || defined(__APPLE_CC__)
-				/*	I can't test this Apple stuff!	*/
-				CFBundleRef bundle;
-				CFURLRef bundleURL =
-					CFURLCreateWithFileSystemPath(
-						kCFAllocatorDefault,
-						CFSTR("/System/Library/Frameworks/OpenGL.framework"),
-						kCFURLPOSIXPathStyle,
-						true );
-				CFStringRef extensionName =
-					CFStringCreateWithCString(
-						kCFAllocatorDefault,
-						"glCompressedTexImage2DARB",
-						kCFStringEncodingASCII );
-				bundle = CFBundleCreate( kCFAllocatorDefault, bundleURL );
-				assert( bundle != NULL );
-				ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)
-						CFBundleGetFunctionPointerForName
-						(
-							bundle, extensionName
-						);
-				CFRelease( bundleURL );
-				CFRelease( extensionName );
-				CFRelease( bundle );
-			#elif defined( SOIL_X11_PLATFORM )
-				ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)
-						#if !defined(GLX_VERSION_1_4)
-						glXGetProcAddressARB
-						#else
-						glXGetProcAddress
-						#endif
-						(
-							(const GLubyte *)"glCompressedTexImage2DARB"
-						);
-			#else
-				ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)&glCompressedTexImage2D;
-			#endif
+			P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr = get_glCompressedTexImage2D_addr();
 
 			/*	Flag it so no checks needed later	*/
 			if( NULL == ext_addr )
@@ -2484,18 +2491,15 @@ int query_PVR_capability( void )
 	if( has_PVR_capability == SOIL_CAPABILITY_UNKNOWN )
 	{
 		/*	we haven't yet checked for the capability, do so	*/
-		if(
-			(NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
+		if (NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
 				"GL_IMG_texture_compression_pvrtc" ) )
-		&&
-			(NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
-				"GL_IMG_texture_compression_pvrtc" ) )
-			)
 		{
 			/*	not there, flag the failure	*/
 			has_PVR_capability = SOIL_CAPABILITY_NONE;
 		} else
 		{
+			soilGlCompressedTexImage2D = get_glCompressedTexImage2D_addr();
+			
 			/*	it's there!	*/
 			has_PVR_capability = SOIL_CAPABILITY_PRESENT;
 		}
@@ -2510,13 +2514,8 @@ int query_BGRA8888_capability( void )
 	if( has_BGRA8888_capability == SOIL_CAPABILITY_UNKNOWN )
 	{
 		/*	we haven't yet checked for the capability, do so	*/
-		if(
-			(NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
+		if (NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
 				"GL_IMG_texture_format_BGRA8888" ) )
-		&&
-			(NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
-				"GL_IMG_texture_format_BGRA8888" ) )
-			)
 		{
 			/*	not there, flag the failure	*/
 			has_BGRA8888_capability = SOIL_CAPABILITY_NONE;
