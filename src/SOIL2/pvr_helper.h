@@ -6,7 +6,7 @@
 /*!***************************************************************************
  Describes the header of a PVR header-texture
  *****************************************************************************/
-typedef struct _PVR_Texture_Header
+typedef struct
 {
 	unsigned int dwHeaderSize;			/*!< size of the structure */
 	unsigned int dwHeight;				/*!< height of surface to be created */

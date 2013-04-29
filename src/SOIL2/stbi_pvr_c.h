@@ -60,7 +60,6 @@ int      stbi_pvr_test_callbacks      (stbi_io_callbacks const *clbk, void *user
    return stbi_pvr_test(&s);
 }
 
-/** stbi_pvr_info implementation here */
 static int stbi_pvr_info(stbi *s, int *x, int *y, int *comp, int * iscompressed )
 {
 	PVR_Texture_Header header;

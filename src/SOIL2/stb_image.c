@@ -34,10 +34,6 @@
 
    See end of file for full revision history.
 
-   TODO:
-      stbi_info support for BMP,PSD,HDR,PIC
-
-
  ============================    Contributors    =========================
               
  Image formats                                Optimizations & bugfixes
@@ -237,6 +233,12 @@ static int stbi_pvr_test(stbi *s);
 static stbi_uc * stbi_pvr_load(stbi *s, int *x, int *y, int *comp, int req_comp);
 #endif
 
+#ifndef STBI_NO_PKM
+#include "stbi_pkm.h"
+static int stbi_pkm_test(stbi *s);
+static stbi_uc * stbi_pkm_load(stbi *s, int *x, int *y, int *comp, int req_comp);
+#endif
+
 // this is not threadsafe
 static const char *failure_reason;
 
@@ -289,6 +291,9 @@ static unsigned char *stbi_load_main(stbi *s, int *x, int *y, int *comp, int req
    #endif
    #ifndef STBI_NO_PVR
    if (stbi_pvr_test(s))  return stbi_pvr_load(s,x,y,comp,req_comp);
+   #endif
+   #ifndef STBI_NO_PKM
+   if (stbi_pkm_test(s))  return stbi_pkm_load(s,x,y,comp,req_comp);
    #endif
    #ifndef STBI_NO_HDR
    if (stbi_hdr_test(s)) {
@@ -4178,6 +4183,11 @@ static int stbi_hdr_info(stbi *s, int *x, int *y, int *comp)
 #include "stbi_pvr_c.h"
 #endif
 
+//	add in my pkm ( ETC1 ) loading support
+#ifndef STBI_NO_PKM
+#include "stbi_pkm_c.h"
+#endif
+
 static int stbi_bmp_info(stbi *s, int *x, int *y, int *comp)
 {
    int hsz;
@@ -4302,6 +4312,10 @@ static int stbi_info_main(stbi *s, int *x, int *y, int *comp)
    #endif
    #ifndef STBI_NO_PVR
    if (stbi_pvr_info(s, x, y, comp, NULL))
+	   return 1;
+   #endif
+   #ifndef STBI_NO_PKM
+   if (stbi_pkm_info(s, x, y, comp))
 	   return 1;
    #endif
    #ifndef STBI_NO_HDR

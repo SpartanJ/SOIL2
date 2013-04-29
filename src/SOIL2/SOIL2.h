@@ -110,7 +110,8 @@ enum
 	SOIL_FLAG_NTSC_SAFE_RGB = 128,
 	SOIL_FLAG_CoCg_Y = 256,
 	SOIL_FLAG_TEXTURE_RECTANGLE = 512,
-	SOIL_FLAG_PVR_LOAD_DIRECT = 1024
+	SOIL_FLAG_PVR_LOAD_DIRECT = 1024,
+	SOIL_FLAG_ETC1_LOAD_DIRECT = 2048
 };
 
 /**
@@ -463,6 +464,17 @@ unsigned int SOIL_direct_load_PVR_from_memory(
 		unsigned int reuse_texture_ID,
 		int flags,
 		int loading_as_cubemap );
+
+/** Loads the PVR texture directly to the GPU memory ( if supported ) */
+unsigned int SOIL_direct_load_ETC1(const char *filename,
+		unsigned int reuse_texture_ID,
+		int flags );
+
+/** Loads the PVR texture directly to the GPU memory ( if supported ) */
+unsigned int SOIL_direct_load_ETC1_from_memory(const unsigned char *const buffer,
+		int buffer_length,
+		unsigned int reuse_texture_ID,
+		int flags );
 
 #ifdef __cplusplus
 }

@@ -56,6 +56,9 @@ int main(  int argc, char **argv  )
 
 	std::cout << "'" << load_me << "'" << std::endl;
 
+	int x, y, c;
+	stbi_info( load_me.c_str(), &x, &y, &c );
+
 	//	1st try to load it as a single-image-cubemap
 	//	(note, need DDS ordered faces: "EWUDNS")
 	GLuint tex_ID;
@@ -73,6 +76,7 @@ int main(  int argc, char **argv  )
 			| SOIL_FLAG_MIPMAPS
 			| SOIL_FLAG_DDS_LOAD_DIRECT
 			| SOIL_FLAG_PVR_LOAD_DIRECT
+			| SOIL_FLAG_ETC1_LOAD_DIRECT
 			);
 
 	time_me = glfwGetTime() - time_me;
@@ -127,6 +131,7 @@ int main(  int argc, char **argv  )
 					| SOIL_FLAG_MIPMAPS
 					| SOIL_FLAG_DDS_LOAD_DIRECT
 					| SOIL_FLAG_PVR_LOAD_DIRECT
+					| SOIL_FLAG_ETC1_LOAD_DIRECT
 					);
 			
 			time_me = glfwGetTime() - time_me;
