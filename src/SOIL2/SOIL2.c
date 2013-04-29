@@ -2385,6 +2385,7 @@ unsigned int SOIL_direct_load_ETC1_from_memory(
 
 	width = (header->iWidthMSB << 8) | header->iWidthLSB;
 	height = (header->iHeightMSB << 8) | header->iHeightLSB;
+	compressed_image_size = (((width + 3) & ~3) * ((height + 3) & ~3)) >> 1;
 
 	// load the texture up
 	tex_ID = reuse_texture_ID;
@@ -2416,6 +2417,10 @@ unsigned int SOIL_direct_load_ETC1_from_memory(
 
 	if( tex_ID )
 	{
+		/* No MIPmaps for ETC1 */
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+
 		/*	does the user want clamping, or wrapping?	*/
 		if( flags & SOIL_FLAG_TEXTURE_REPEATS )
 		{

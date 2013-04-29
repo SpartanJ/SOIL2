@@ -4365,6 +4365,10 @@ int stbi_info_from_callbacks(stbi_io_callbacks const *c, void *user, int *x, int
    return stbi_info_main(&s,x,y,comp);
 }
 
+#ifndef STBI_NO_EXT
+#include "stbi_ext_c.h"
+#endif
+
 #endif // STBI_HEADER_FILE_ONLY
 
 /*
