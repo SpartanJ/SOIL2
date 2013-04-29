@@ -75,6 +75,10 @@
 
 #endif
 
+#ifndef GL_BGRA
+#define GL_BGRA                                             0x80E1
+#endif
+
 #include "SOIL2.h"
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
