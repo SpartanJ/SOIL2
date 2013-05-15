@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include "stb_image_write.h"
 
 typedef unsigned int stbiw_uint32;
 typedef int stb_image_write_test[sizeof(stbiw_uint32)==4 ? 1 : -1];

@@ -61,6 +61,16 @@
 	#include <windows.h>
 	#include <wingdi.h>
 	#include <GL/gl.h>
+	
+	#ifndef GL_UNSIGNED_SHORT_4_4_4_4
+	#define GL_UNSIGNED_SHORT_4_4_4_4 0x8033
+	#endif
+	#ifndef GL_UNSIGNED_SHORT_5_5_5_1
+	#define GL_UNSIGNED_SHORT_5_5_5_1 0x8034
+	#endif
+	#ifndef GL_UNSIGNED_SHORT_5_6_5
+	#define GL_UNSIGNED_SHORT_5_6_5 0x8363
+	#endif
 #elif defined(__APPLE__) || defined(__APPLE_CC__)
 	/*	I can't test this Apple stuff!	*/
 	#include <OpenGL/gl.h>
@@ -2070,6 +2080,7 @@ unsigned int SOIL_direct_load_PVR_from_memory(
 	int is_compressed_format = 0;
 	int mipmaps = 0;
 	int i;
+	GLint unpack_aligment;
 
 	// Check the header size
 	if ( header->dwHeaderSize != sizeof(PVR_Texture_Header) ) {
@@ -2210,7 +2221,6 @@ unsigned int SOIL_direct_load_PVR_from_memory(
 		return 0;
 	}
 
-	GLint unpack_aligment;
 	glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_aligment);
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1);				// Never have row-aligned in headers
 
@@ -2372,6 +2382,7 @@ unsigned int SOIL_direct_load_ETC1_from_memory(
 	unsigned int height;
 	unsigned long compressed_image_size = buffer_length - PKM_HEADER_SIZE;
 	char *texture_ptr = (char*)buffer + PKM_HEADER_SIZE;
+	GLint unpack_aligment;
 
 	if ( query_ETC1_capability() != SOIL_CAPABILITY_PRESENT ) {
 		result_string_pointer = "error: ETC1 not supported. Decompress the texture first.";
@@ -2401,7 +2412,6 @@ unsigned int SOIL_direct_load_ETC1_from_memory(
 		return 0;
 	}
 
-	GLint unpack_aligment;
 	glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_aligment);
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1);				// Never have row-aligned in headers
 

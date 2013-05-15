@@ -58,9 +58,9 @@ USAGE:
 extern "C" {
 #endif
 
-extern int stbi_write_png(char const *filename, int w, int h, int comp, const void *data, int stride_in_bytes);
-extern int stbi_write_bmp(char const *filename, int w, int h, int comp, const void *data);
-extern int stbi_write_tga(char const *filename, int w, int h, int comp, const void *data);
+int stbi_write_png(char const *filename, int w, int h, int comp, const void *data, int stride_in_bytes);
+int stbi_write_bmp(char const *filename, int w, int h, int comp, const void *data);
+int stbi_write_tga(char const *filename, int w, int h, int comp, const void *data);
 
 #ifdef __cplusplus
 }

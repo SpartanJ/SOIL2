@@ -78,6 +78,7 @@ int      stbi_pkm_test_callbacks      (stbi_io_callbacks const *clbk, void *user
 static int stbi_pkm_info(stbi *s, int *x, int *y, int *comp )
 {
 	PKMHeader header;
+	unsigned int width, height;
 
 	getn( s, (stbi_uc*)(&header), sizeof(PKMHeader) );
 
@@ -86,8 +87,8 @@ static int stbi_pkm_info(stbi *s, int *x, int *y, int *comp )
 		return 0;
 	}
 
-	unsigned int width = (header.iWidthMSB << 8) | header.iWidthLSB;
-	unsigned int height = (header.iHeightMSB << 8) | header.iHeightLSB;
+	width = (header.iWidthMSB << 8) | header.iWidthLSB;
+	height = (header.iHeightMSB << 8) | header.iHeightLSB;
 
 	*x = s->img_x = width;
 	*y = s->img_y = height;
