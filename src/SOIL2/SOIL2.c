@@ -2505,6 +2505,9 @@ int query_NPOT_capability( void )
 		if( NULL != glGetString( GL_EXTENSIONS ) &&
 			(NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
 				"GL_ARB_texture_non_power_of_two" ) )
+		&&
+			(NULL == strstr( (char const*)glGetString( GL_EXTENSIONS ),
+				"GL_OES_texture_npot" ) )
 			)
 		{
 			/*	not there, flag the failure	*/
