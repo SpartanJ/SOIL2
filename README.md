@@ -31,7 +31,8 @@ Public Domain
     * HDR - converted to LDR, unless loaded with *HDR* functions (RGBE or RGBdivA or RGBdivA2)
     * GIF
     * PIC 
-
+    * PKM ( ETC1 )
+    * PVR ( PVRTC )
 
 * Writeable Image Formats:
     * TGA - Greyscale or RGB or RGBA, uncompressed

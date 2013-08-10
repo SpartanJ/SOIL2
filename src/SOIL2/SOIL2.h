@@ -435,6 +435,20 @@ const char*
 		void
 	);
 
+/** @return The address of the GL function proc, or NULL if the function is not found. */
+void *
+	SOIL_GL_GetProcAddress
+	(
+		const char *proc
+	);
+
+/** @return 1 if an OpenGL extension is supported for the current context, 0 otherwise. */
+int
+	SOIL_GL_ExtensionSupported
+	(
+		const char *extension
+	);
+
 /** Loads the DDS texture directly to the GPU memory ( if supported ) */
 unsigned int SOIL_direct_load_DDS(
 		const char *filename,
