@@ -167,10 +167,9 @@ int query_ETC1_capability( void );
 
 static int isAtLeastGL3()
 {
-	static int calc = 0;
-	static int is_gl3 = 0;
+	static int is_gl3 = SOIL_CAPABILITY_UNKNOWN;
 
-	if ( !calc )
+	if ( SOIL_CAPABILITY_UNKNOWN == is_gl3 )
 	{
 		const char * verstr	= (const char *) glGetString( GL_VERSION );
 		is_gl3				= ( verstr && ( atoi(verstr) >= 3 ) );

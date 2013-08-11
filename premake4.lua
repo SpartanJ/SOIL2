@@ -28,13 +28,13 @@ solution "SOIL2"
 		files { "src/test/*.cpp" }
 
 		configuration "windows"
-			links {"gdi32", "winmm", "user32","glfw","glu32", "opengl32"}
+			links {"gdi32","winmm","user32","glfw","glu32","opengl32"}
 
 		configuration "linux"
 			links {"GL","glfw"}
 		
 		configuration "macosx"
-			links {"GL","glfw"}
+			links {"OpenGL.framework","CoreFoundation.framework","glfw"}
 		
 		configuration "haiku"
 			links {"GL","glfw"}
