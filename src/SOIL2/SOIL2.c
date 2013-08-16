@@ -245,7 +245,7 @@ int SOIL_GL_ExtensionSupported(const char *extension)
 
 		if ( NULL == soilGlGetStringiFunc )
 		{
-			soilGlGetStringiFunc = SOIL_GL_GetProcAddress("glGetStringi");
+			soilGlGetStringiFunc = (P_SOIL_glGetStringiFunc)SOIL_GL_GetProcAddress("glGetStringi");
 
 			if ( NULL == soilGlGetStringiFunc )
 			{
