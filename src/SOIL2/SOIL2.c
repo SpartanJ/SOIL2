@@ -1296,6 +1296,7 @@ unsigned int
 	int iwidth = *width;
 	int iheight = *height;
 	int needCopy;
+	GLint unpack_aligment;
 
 	/*	how large of a texture can this OpenGL implementation handle?	*/
 	/*	texture_check_size_enum will be GL_MAX_TEXTURE_SIZE or SOIL_MAX_CUBE_MAP_TEXTURE_SIZE	*/
@@ -1528,6 +1529,11 @@ unsigned int
 		/*  bind an OpenGL texture ID	*/
 		glBindTexture( opengl_texture_type, tex_id );
 		check_for_GL_errors( "glBindTexture" );
+
+		/* set the unpack aligment */
+		glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_aligment);
+		glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+
 		/*  upload the main image	*/
 		if( DXT_mode == SOIL_CAPABILITY_PRESENT )
 		{
@@ -1581,6 +1587,7 @@ unsigned int
 			check_for_GL_errors( "glTexImage2D" );
 			/*printf( "OpenGL DXT compressor\n" );	*/
 		}
+
 		/*	are any MIPmaps desired?	*/
 		if( flags & SOIL_FLAG_MIPMAPS )
 		{
@@ -1655,6 +1662,10 @@ unsigned int
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 			check_for_GL_errors( "GL_TEXTURE_MIN/MAG_FILTER" );
 		}
+
+		/* recover the unpack aligment */
+		glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+
 		/*	does the user want clamping, or wrapping?	*/
 		if( flags & SOIL_FLAG_TEXTURE_REPEATS )
 		{
