@@ -1,3 +1,15 @@
+function string.starts(String,Start)
+	if ( _ACTION ) then
+		return string.sub(String,1,string.len(Start))==Start
+	end
+	
+	return false
+end
+
+function is_vs()
+	return ( string.starts(_ACTION,"vs") )
+end
+
 solution "SOIL2"
 	location("./make/" .. os.get() .. "/")
 	targetdir("./bin")
@@ -6,7 +18,12 @@ solution "SOIL2"
 	
 	project "soil2-static-lib"
 		kind "StaticLib"
-		language "C"
+		if is_vs() then
+			language "C++"
+			buildoptions { "/TP" }
+		else
+			language "C"
+		end
 		targetdir("./lib")
 		files { "src/SOIL2/*.c" }
 
