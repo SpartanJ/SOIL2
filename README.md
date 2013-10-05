@@ -78,11 +78,19 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 
 * `SOIL_create_OGL_texture` expects width and height parameters as pointers, since the real size of the texture loaded could change. This occurs when GL_ARB_texture_non_power_of_two extension is not present and the user tries to load a non-power of two texture.
 
-* And some minor fixes.
+* Added support for PVRTC and ETC1 ( PKM format ) direct loading and decoding as fallback method if the GPU doesn't support the texture compression method. With the following new functions exposed:
+    * `SOIL_direct_load_PVR`
+    * `SOIL_direct_load_PVR_from_memory`
+    * `SOIL_direct_load_ETC1`
+    * `SOIL_direct_load_ETC1_from_memory`
 
-**TODO:**
---------
-* Save images to JPG.
+* Added support for glGenerateMipmap if the GPU support it ( and any of its variations, glGenerateMipmapEXT and glGenerateMipmapOES for GLES1 ). Added the flag SOIL_FLAG_GL_MIPMAPS to request GL mipmaps instead of the internal mipmap creation provided by SOIL2.
+
+* Added `SOIL_GL_ExtensionSupported`. To query if a extension is supported by the GPU.
+
+* Added `SOIL_GL_GetProcAddress`. To get the address of a GL function.
+
+* And some minor fixes.
 
 **Compiling:**
 ------------
@@ -100,8 +108,8 @@ or
 
 `premake4 xcode4` to generate Xcode 4 project.
 
-The static library will be located in `lib` folder project subdirectory.
-The test will be located in `bin`, you need [GLFW](http://www.glfw.org/) installed to be able to build the test.
+The static library will be located in `lib/*YOURPLATFORM*/` folder project subdirectory.
+The test will be located in `bin`, you need [SDL 2](http://libsdl.org/) installed to be able to build the test.
 
 **Usage:**
 ----------
@@ -217,5 +225,7 @@ Simply include SOIL2.h in your C or C++ file, compile the .c files or link to th
 
 **Clarifications**
 ----------------
+
+Visual Studio users: SOIL2 will need to be compiled as C++ source ( at least the file etc1_utils.c ), since VC compiler doesn't support C99. Users using the premake file provided by the project don't need to do anything, since the premake file already handles this issue.
 
 The icon used for the project is part of the [Haiku®'s Icons](http://www.haiku-inc.org/haiku-icons.html), [MIT licensed](http://www.opensource.org/licenses/mit-license.html).
