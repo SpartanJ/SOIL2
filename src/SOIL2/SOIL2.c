@@ -49,10 +49,15 @@
 
 	#define APIENTRY GL_APIENTRY
 #elif defined( SOIL_GLES1 )
+	#ifndef GL_GLEXT_PROTOTYPES
+	#define GL_GLEXT_PROTOTYPES
+	#endif
 	#ifdef SOIL_PLATFORM_IOS
 		#include <OpenGLES/ES1/gl.h>
+		#include <OpenGLES/ES1/glext.h>
 	#else
 		#include <GLES/gl.h>
+		#include <GLES/glext.h>
 	#endif
 
 	#define APIENTRY GL_APIENTRY
