@@ -78,7 +78,7 @@ solution "SOIL2"
 		else
 			language "C"
 		end
-		targetdir("./lib")
+		targetdir("lib/" .. os.get() .. "/")
 		files { "src/SOIL2/*.c" }
 
 		configuration "debug"
@@ -93,25 +93,28 @@ solution "SOIL2"
 			targetname "soil2"
 
 	project "soil2-test"
-		kind "ConsoleApp"
+		kind "WindowedApp"
 		language "C++"
 		links { "soil2-static-lib" }
 		files { "src/test/*.cpp" }
 
+		configuration "mingw32"
+			links { "mingw32" }
+
 		configuration "windows"
-			links {"gdi32","winmm","user32","glfw","glu32","opengl32"}
+			links {"opengl32","SDL2main","SDL2"}
 
 		configuration "linux"
-			links {"GL","glfw"}
+			links {"GL","SDL2"}
 		
 		configuration "macosx"
-			links {"OpenGL.framework","CoreFoundation.framework","glfw"}
+			links {"OpenGL.framework","CoreFoundation.framework","SDL2.framework"}
 		
 		configuration "haiku"
-			links {"GL","glfw"}
+			links {"GL","SDL2"}
 
 		configuration "freebsd"
-			links {"GL","glfw"}
+			links {"GL","SDL2"}
 		
 		configuration "debug"
 			defines { "DEBUG" }

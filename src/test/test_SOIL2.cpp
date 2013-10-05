@@ -5,7 +5,14 @@
 #include <iostream>
 #include "../SOIL2/SOIL2.h"
 
-#include <GL/glfw.h>
+#if ( defined( _MSCVER ) || defined( _MSC_VER ) )
+	#include <SDL.h>
+	#include <SDL_opengl.h>
+#else
+	#include <SDL2/SDL.h>
+	#include <SDL2/SDL_opengl.h>
+#endif
+
 #ifndef GL_REFLECTION_MAP
 #define GL_REFLECTION_MAP 0x8512
 #endif
@@ -14,32 +21,45 @@
 #define GL_TEXTURE_CUBE_MAP 0x8513
 #endif
 
-int main(  int argc, char **argv  )
+double get_total_ms( Uint64 time_me )
+{
+	 return ( (double)(SDL_GetPerformanceCounter() - time_me) / (double)SDL_GetPerformanceFrequency() ) * 1000;
+}
+
+int main( int argc, char* argv[] )
 {
 	GLboolean running;
 
 	// Initialise GLFW
-	if( !glfwInit() )
+	if( 0 != SDL_Init( SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
 	{
-		fprintf( stderr, "Failed to initialize GLFW\n" );
+		fprintf( stderr, "Failed to initialize SDL2: %s\n", SDL_GetError() );
 		exit( EXIT_FAILURE );
 	}
 
 	// Open OpenGL window
-	if( !glfwOpenWindow( 512, 512, 0, 0, 0, 0, 0, 0, GLFW_WINDOW ) )
+	SDL_Window * window = SDL_CreateWindow( "SOIL2 Test",SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 512, 512, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
+
+	if( NULL == window )
 	{
-		fprintf( stderr, "Failed to open GLFW window\n" );
-		glfwTerminate();
+		fprintf( stderr, "Failed to open SDL2 window: %s\n", SDL_GetError() );
 		exit( EXIT_FAILURE );
 	}
 
-	glfwSetWindowTitle( "SOIL2 Test" );
+	SDL_GLContext context = SDL_GL_CreateContext( window );
 
-	// Enable sticky keys
-	glfwEnable( GLFW_STICKY_KEYS );
+	if ( NULL == context )
+	{
+		fprintf( stderr, "Failed to create SDL2 OpenGL Context: %s\n", SDL_GetError() );
 
-	// Enable vertical sync (on cards that support it)
-	glfwSwapInterval( 1 );
+		SDL_DestroyWindow( window );
+
+		exit( EXIT_FAILURE );
+	}
+
+	SDL_GL_SetSwapInterval( 1 );
+
+	SDL_GL_MakeCurrent( window, context );
 
 	//	log what the use is asking us to load
 	std::string load_me;
@@ -58,10 +78,10 @@ int main(  int argc, char **argv  )
 	//	1st try to load it as a single-image-cubemap
 	//	(note, need DDS ordered faces: "EWUDNS")
 	GLuint tex_ID;
-	double time_me;
+	Uint64 time_me;
 
 	std::cout << "Attempting to load as a cubemap" << std::endl;
-	time_me = glfwGetTime();
+	time_me = SDL_GetPerformanceCounter();
 
 	tex_ID = SOIL_load_OGL_single_cubemap(
 			load_me.c_str(),
@@ -75,9 +95,7 @@ int main(  int argc, char **argv  )
 			| SOIL_FLAG_ETC1_LOAD_DIRECT
 			);
 
-	time_me = glfwGetTime() - time_me;
-
-	std::cout << "the load time was " << time_me << " seconds" << std::endl;
+	std::cout << "the load time was " << get_total_ms(time_me) << " milliseconds" << std::endl;
 
 	if( tex_ID > 0 )
 	{
@@ -95,7 +113,7 @@ int main(  int argc, char **argv  )
 	else
 	{
 		std::cout << "Attempting to load as a HDR texture" << std::endl;
-		time_me = glfwGetTime();
+		time_me = SDL_GetPerformanceCounter();
 		
 		tex_ID = SOIL_load_OGL_HDR_texture(
 				load_me.c_str(),
@@ -106,10 +124,8 @@ int main(  int argc, char **argv  )
 				| SOIL_FLAG_MIPMAPS
 				| SOIL_FLAG_GL_MIPMAPS
 				);
-		
-		time_me = glfwGetTime() - time_me;
-		
-		std::cout << "the load time was " << time_me << " seconds" << std::endl;
+
+		std::cout << "the load time was " << get_total_ms(time_me) << " milliseconds" << std::endl;
 		
 		//	did I fail?
 		if( tex_ID < 1 )
@@ -118,7 +134,7 @@ int main(  int argc, char **argv  )
 			std::cout << "Attempting to load as a simple 2D texture" << std::endl;
 			
 			//	load the texture, if specified
-			time_me = glfwGetTime();
+			time_me = SDL_GetPerformanceCounter();
 			
 			tex_ID = SOIL_load_OGL_texture(
 					load_me.c_str(),
@@ -132,10 +148,8 @@ int main(  int argc, char **argv  )
 					| SOIL_FLAG_ETC1_LOAD_DIRECT
 					| SOIL_FLAG_COMPRESS_TO_DXT
 					);
-			
-			time_me = glfwGetTime() - time_me;
-			
-			std::cout << "the load time was " << time_me << " seconds" << std::endl;
+
+			std::cout << "the load time was " << get_total_ms(time_me) << " milliseconds" << std::endl;
 		}
 
 		if( tex_ID > 0 )
@@ -164,10 +178,36 @@ int main(  int argc, char **argv  )
 	float theta = 0.0f;
 	float tex_u_max = 1.0f;
 	float tex_v_max = 1.0f;
+	Uint64 counterOld = SDL_GetPerformanceCounter();
 
 	while( running )
 	{
-		theta = glfwGetTime() * 8;
+		double dt = (double)(SDL_GetPerformanceCounter() - counterOld) / (double)SDL_GetPerformanceFrequency();
+		counterOld = SDL_GetPerformanceCounter();
+
+		SDL_Event evt;
+
+		while (SDL_PollEvent(&evt))
+		{
+			switch (evt.type)
+			{
+				case SDL_QUIT:
+				{
+					running = false;
+					break;
+				}
+				case SDL_KEYUP:
+				{
+					if ( SDLK_ESCAPE == evt.key.keysym.sym )
+					{
+						running = false;
+					}
+					break;
+				}
+			}
+		}
+
+		theta += dt * 40;
 
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -197,7 +237,7 @@ int main(  int argc, char **argv  )
 		glPopMatrix();
 
 		glPushMatrix();
-		glScalef( 0.4f, 0.4f, 0.4f );
+		glScalef( 0.8f, 0.8f, 0.8f );
 		glRotatef(theta, 0.0f, 0.0f, 1.0f);
 		glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
 		glNormal3f( 0.0f, 0.0f, 1.0f );
@@ -210,14 +250,13 @@ int main(  int argc, char **argv  )
 		glPopMatrix();
 
 		// Swap buffers
-		glfwSwapBuffers();
-
-		// Check if the ESC key was pressed or the window was closed
-		running = !glfwGetKey( GLFW_KEY_ESC ) && glfwGetWindowParam( GLFW_OPENED );
+		SDL_GL_SwapWindow( window );
 	}
 
 	// Close OpenGL window and terminate GLFW
-	glfwTerminate();
+	SDL_GL_DeleteContext( context );
+
+	SDL_DestroyWindow( window );
 
 	exit( EXIT_SUCCESS );
 }
