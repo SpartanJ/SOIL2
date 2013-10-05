@@ -45,15 +45,15 @@ Public Domain
     * Can generate a new texture handle, or reuse one specified
     * Can automatically rescale the image to the next largest power-of-two size
     * Can automatically create MIPmaps
-    * Can scale (not simply clamp) the RGB values into the "safe range" for NTSC displays (16 to 235, as recommended here)
+    * Can scale (not simply clamp) the RGB values into the "safe range" for NTSC displays (16 to 235)
     * Can multiply alpha on load (for more correct blending / compositing)
     * Can flip the image vertically
     * Can compress and upload any image as DXT1 or DXT5 (if EXT_texture_compression_s3tc is available), using an     * internal (very fast!) compressor
-    * Can convert the RGB to YCoCg color space (useful with DXT5 compression: see this link from NVIDIA)
+    * Can convert the RGB to YCoCg color space (useful with DXT5 compression: see [this link](http://www.nvidia.com/object/real-time-ycocg-dxt-compression.html) from NVIDIA)
     * Will automatically downsize a texture if it is larger than GL_MAX_TEXTURE_SIZE
     * Can directly upload DDS files (DXT1/3/5/uncompressed/cubemap, with or without MIPmaps). Note: directly uploading the compressed DDS image will disable the other options (no flipping, no pre-multiplying alpha, no rescaling, no creation of MIPmaps, no auto-downsizing)
     * Can load rectangluar textures for GUI elements or splash screens (requires GL_ARB/EXT/NV_texture_rectangle)
-Can decompress images from RAM (e.g. via PhysicsFS or similar) into an OpenGL texture (same features as regular 2D textures, above)
+Can decompress images from RAM (e.g. via [PhysicsFS](http://icculus.org/physfs/) or similar) into an OpenGL texture (same features as regular 2D textures, above)
 
 
 * Can load cube maps directly into an OpenGL texture (same features as regular 2D textures, above)
