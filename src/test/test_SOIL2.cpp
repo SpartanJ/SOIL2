@@ -4,7 +4,6 @@
 #include <string>
 #include <iostream>
 #include "../SOIL2/SOIL2.h"
-#include "../SOIL2/stb_image.h"
 
 #include <GL/glfw.h>
 #ifndef GL_REFLECTION_MAP
@@ -56,9 +55,6 @@ int main(  int argc, char **argv  )
 
 	std::cout << "'" << load_me << "'" << std::endl;
 
-	int x, y, c;
-	stbi_info( load_me.c_str(), &x, &y, &c );
-
 	//	1st try to load it as a single-image-cubemap
 	//	(note, need DDS ordered faces: "EWUDNS")
 	GLuint tex_ID;
@@ -108,6 +104,7 @@ int main(  int argc, char **argv  )
 				SOIL_CREATE_NEW_ID,
 				SOIL_FLAG_POWER_OF_TWO
 				| SOIL_FLAG_MIPMAPS
+				| SOIL_FLAG_GL_MIPMAPS
 				);
 		
 		time_me = glfwGetTime() - time_me;
@@ -127,11 +124,13 @@ int main(  int argc, char **argv  )
 					load_me.c_str(),
 					SOIL_LOAD_AUTO,
 					SOIL_CREATE_NEW_ID,
-					SOIL_FLAG_POWER_OF_TWO
+					  SOIL_FLAG_POWER_OF_TWO
 					| SOIL_FLAG_MIPMAPS
+					| SOIL_FLAG_GL_MIPMAPS
 					| SOIL_FLAG_DDS_LOAD_DIRECT
 					| SOIL_FLAG_PVR_LOAD_DIRECT
 					| SOIL_FLAG_ETC1_LOAD_DIRECT
+					| SOIL_FLAG_COMPRESS_TO_DXT
 					);
 			
 			time_me = glfwGetTime() - time_me;
@@ -198,7 +197,7 @@ int main(  int argc, char **argv  )
 		glPopMatrix();
 
 		glPushMatrix();
-		glScalef( 0.8f, 0.8f, 0.8f );
+		glScalef( 0.4f, 0.4f, 0.4f );
 		glRotatef(theta, 0.0f, 0.0f, 1.0f);
 		glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
 		glNormal3f( 0.0f, 0.0f, 1.0f );

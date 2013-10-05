@@ -58,7 +58,7 @@
 	#define APIENTRY GL_APIENTRY
 #else
 
-#if defined( __WIN32__ ) || defined( _WIN32 )
+#if defined( __WIN32__ ) || defined( _WIN32 ) || defined( WIN32 )
 	#define SOIL_PLATFORM_WIN32
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
@@ -146,10 +146,16 @@ int query_DXT_capability( void );
 #define SOIL_RGBA_S3TC_DXT3		0x83F2
 #define SOIL_RGBA_S3TC_DXT5		0x83F3
 typedef void (APIENTRY * P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC) (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid * data);
-P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC soilGlCompressedTexImage2D = NULL;
+static P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC soilGlCompressedTexImage2D = NULL;
 
 typedef const GLubyte *(APIENTRY * P_SOIL_glGetStringiFunc) (GLenum, GLuint);
-P_SOIL_glGetStringiFunc soilGlGetStringiFunc = NULL;
+static P_SOIL_glGetStringiFunc soilGlGetStringiFunc = NULL;
+
+typedef void (APIENTRY *P_SOIL_GLGENERATEMIPMAPPROC)(GLenum target);
+static P_SOIL_GLGENERATEMIPMAPPROC soilGlGenerateMipmap = NULL;
+
+static int has_gen_mipmap_capability = SOIL_CAPABILITY_UNKNOWN;
+static int query_gen_mipmap_capability( void );
 
 static int has_PVR_capability = SOIL_CAPABILITY_UNKNOWN;
 int query_PVR_capability( void );
@@ -178,6 +184,17 @@ static int isAtLeastGL3()
 	return is_gl3;
 }
 
+#ifdef SOIL_PLATFORM_WIN32
+static int soilTestWinProcPointer(const PROC pTest)
+{
+	ptrdiff_t iTest;
+	if(!pTest) return 0;
+	iTest = (ptrdiff_t)pTest;
+	if(iTest == 1 || iTest == 2 || iTest == 3 || iTest == -1) return 0;
+	return 1;
+}
+#endif
+
 void * SOIL_GL_GetProcAddress(const char *proc)
 {
 	void *func = NULL;
@@ -186,6 +203,9 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 	func = NULL;
 #elif defined( SOIL_PLATFORM_WIN32 )
 	func =  wglGetProcAddress( proc );
+
+	if (!soilTestWinProcPointer(func))
+		func = NULL;
 #elif defined( SOIL_PLATFORM_OSX )
 	/*	I can't test this Apple stuff!	*/
 	CFBundleRef bundle;
@@ -1275,6 +1295,86 @@ void check_for_GL_errors( const char *calling_location )
 }
 #endif
 
+static void createMipmaps(const unsigned char *const img,
+		int width, int height, int channels,
+		unsigned int flags,
+		unsigned int opengl_texture_target,
+		unsigned int internal_texture_format,
+		unsigned int original_texture_format,
+		int DXT_mode)
+{
+	if ( ( flags & SOIL_FLAG_GL_MIPMAPS ) && query_gen_mipmap_capability() == SOIL_CAPABILITY_PRESENT )
+	{
+		soilGlGenerateMipmap(opengl_texture_target);
+	}
+	else
+	{
+		int MIPlevel = 1;
+		int MIPwidth = (width+1) / 2;
+		int MIPheight = (height+1) / 2;
+		unsigned char *resampled = (unsigned char*)malloc( channels*MIPwidth*MIPheight );
+
+		while( ((1<<MIPlevel) <= width) || ((1<<MIPlevel) <= height) )
+		{
+			/*	do this MIPmap level	*/
+			mipmap_image(
+					img, width, height, channels,
+					resampled,
+					(1 << MIPlevel), (1 << MIPlevel) );
+
+			/*  upload the MIPmaps	*/
+			if( DXT_mode == SOIL_CAPABILITY_PRESENT )
+			{
+				/*	user wants me to do the DXT conversion!	*/
+				int DDS_size;
+				unsigned char *DDS_data = NULL;
+				if( (channels & 1) == 1 )
+				{
+					/*	RGB, use DXT1	*/
+					DDS_data = convert_image_to_DXT1(
+							resampled, MIPwidth, MIPheight, channels, &DDS_size );
+				} else
+				{
+					/*	RGBA, use DXT5	*/
+					DDS_data = convert_image_to_DXT5(
+							resampled, MIPwidth, MIPheight, channels, &DDS_size );
+				}
+				if( DDS_data )
+				{
+					soilGlCompressedTexImage2D(
+						opengl_texture_target, MIPlevel,
+						internal_texture_format, MIPwidth, MIPheight, 0,
+						DDS_size, DDS_data );
+					check_for_GL_errors( "glCompressedTexImage2D" );
+					SOIL_free_image_data( DDS_data );
+				} else
+				{
+					/*	my compression failed, try the OpenGL driver's version	*/
+					glTexImage2D(
+						opengl_texture_target, MIPlevel,
+						internal_texture_format, MIPwidth, MIPheight, 0,
+						original_texture_format, GL_UNSIGNED_BYTE, resampled );
+					check_for_GL_errors( "glTexImage2D" );
+				}
+			} else
+			{
+				/*	user want OpenGL to do all the work!	*/
+				glTexImage2D(
+					opengl_texture_target, MIPlevel,
+					internal_texture_format, MIPwidth, MIPheight, 0,
+					original_texture_format, GL_UNSIGNED_BYTE, resampled );
+				check_for_GL_errors( "glTexImage2D" );
+			}
+			/*	prep for the next level	*/
+			++MIPlevel;
+			MIPwidth = (MIPwidth + 1) / 2;
+			MIPheight = (MIPheight + 1) / 2;
+		}
+
+		SOIL_free_image_data( resampled );
+	}
+}
+
 unsigned int
 	SOIL_internal_create_OGL_texture
 	(
@@ -1341,19 +1441,13 @@ unsigned int
 		flags |= SOIL_FLAG_POWER_OF_TWO;
 	}
 
-	// @TODO: Avoid malloc with already pow2 text and SOIL_FLAG_POWER_OF_TWO or SOIL_FLAG_MIPMAPS
 	needCopy = ( ( flags & SOIL_FLAG_INVERT_Y ) ||
 				 ( flags & SOIL_FLAG_NTSC_SAFE_RGB ) ||
 				 ( flags & SOIL_FLAG_MULTIPLY_ALPHA ) ||
-				 ( ( ( flags & SOIL_FLAG_POWER_OF_TWO ) || ( flags & SOIL_FLAG_MIPMAPS ) ) ) || //  && !( SOIL_IS_POW2(iwidth) && SOIL_IS_POW2(iheight) )
-				 ( iwidth > max_supported_size ) ||
-				 ( iheight > max_supported_size ) ||
-				 ( flags & SOIL_FLAG_CoCg_Y ) ||
-				 ( flags & SOIL_FLAG_COMPRESS_TO_DXT ) );
+				 ( flags & SOIL_FLAG_CoCg_Y )
+				);
 
-	/*	create a copy the image data
-	*	only if needed
-	*/
+	/*	create a copy the image data only if needed */
 	if ( needCopy ) {
 		img = (unsigned char*)malloc( iwidth*iheight*channels );
 		memcpy( img, data, iwidth*iheight*channels );
@@ -1411,8 +1505,11 @@ unsigned int
 
 	/*	do I need to make it a power of 2?	*/
 	if(
-		(flags & SOIL_FLAG_POWER_OF_TWO) ||	/*	user asked for it	*/
-		(flags & SOIL_FLAG_MIPMAPS) ||		/*	need it for the MIP-maps	*/
+		( ( flags & SOIL_FLAG_POWER_OF_TWO) && ( !SOIL_IS_POW2(iwidth) || !SOIL_IS_POW2(iheight) ) ) ||	/*	user asked for it and the texture is not power of 2	*/
+		( (flags & SOIL_FLAG_MIPMAPS)&& !( ( flags & SOIL_FLAG_GL_MIPMAPS ) &&
+										   query_gen_mipmap_capability() == SOIL_CAPABILITY_PRESENT &&
+										   query_NPOT_capability() == SOIL_CAPABILITY_PRESENT ) ) ||	/*	need it for the MIP-maps when mipmaps required
+																											and not GL mipmaps required and supported	*/
 		(iwidth > max_supported_size) ||		/*	it's too big, (make sure it's	*/
 		(iheight > max_supported_size) )		/*	2^n for later down-sampling)	*/
 	{
@@ -1432,10 +1529,10 @@ unsigned int
 			/*	yep, resize	*/
 			unsigned char *resampled = (unsigned char*)malloc( channels*new_width*new_height );
 			up_scale_image(
-					img, iwidth, iheight, channels,
+					NULL != img ? img : data, iwidth, iheight, channels,
 					resampled, new_width, new_height );
 
-			/*	nuke the old guy, then point it at the new guy	*/
+			/*	nuke the old guy ( if a copy exists ), then point it at the new guy	*/
 			SOIL_free_image_data( img );
 			img = resampled;
 			*width = new_width;
@@ -1464,7 +1561,7 @@ unsigned int
 		new_height = iheight / reduce_block_y;
 		resampled = (unsigned char*)malloc( channels*new_width*new_height );
 		/*	perform the actual reduction	*/
-		mipmap_image(	img, iwidth, iheight, channels,
+		mipmap_image( NULL != img ? img : data, iwidth, iheight, channels,
 						resampled, reduce_block_x, reduce_block_y );
 		/*	nuke the old guy, then point it at the new guy	*/
 		SOIL_free_image_data( img );
@@ -1481,12 +1578,12 @@ unsigned int
 		convert_RGB_to_YCoCg( img, iwidth, iheight, channels );
 	}
 	/*	create the OpenGL texture ID handle
-    	(note: allowing a forced texture ID lets me reload a texture)	*/
-    tex_id = reuse_texture_ID;
-    if( tex_id == 0 )
-    {
+		(note: allowing a forced texture ID lets me reload a texture)	*/
+	tex_id = reuse_texture_ID;
+	if( tex_id == 0 )
+	{
 		glGenTextures( 1, &tex_id );
-    }
+	}
 	check_for_GL_errors( "glGenTextures" );
 	/* Note: sometimes glGenTextures fails (usually no OpenGL context)	*/
 	if( tex_id )
@@ -1543,11 +1640,11 @@ unsigned int
 			if( (channels & 1) == 1 )
 			{
 				/*	RGB, use DXT1	*/
-				DDS_data = convert_image_to_DXT1( img, iwidth, iheight, channels, &DDS_size );
+				DDS_data = convert_image_to_DXT1( NULL != img ? img : data, iwidth, iheight, channels, &DDS_size );
 			} else
 			{
 				/*	RGBA, use DXT5	*/
-				DDS_data = convert_image_to_DXT5( img, iwidth, iheight, channels, &DDS_size );
+				DDS_data = convert_image_to_DXT5( NULL != img ? img : data, iwidth, iheight, channels, &DDS_size );
 			}
 			if( DDS_data )
 			{
@@ -1564,93 +1661,27 @@ unsigned int
 				glTexImage2D(
 					opengl_texture_target, 0,
 					internal_texture_format, iwidth, iheight, 0,
-					original_texture_format, GL_UNSIGNED_BYTE, img );
+					original_texture_format, GL_UNSIGNED_BYTE, NULL != img ? img : data );
 				check_for_GL_errors( "glTexImage2D" );
 				/*	printf( "OpenGL DXT compressor\n" );	*/
 			}
 		} else
 		{
 			/*	user want OpenGL to do all the work!	*/
-
-			if ( needCopy ) {
-				glTexImage2D(
-					opengl_texture_target, 0,
-					internal_texture_format, iwidth, iheight, 0,
-					original_texture_format, GL_UNSIGNED_BYTE, img );
-			} else {
-				glTexImage2D(
-					opengl_texture_target, 0,
-					internal_texture_format, iwidth, iheight, 0,
-					original_texture_format, GL_UNSIGNED_BYTE, data );
-			}
+			glTexImage2D(
+				opengl_texture_target, 0,
+				internal_texture_format, iwidth, iheight, 0,
+				original_texture_format, GL_UNSIGNED_BYTE, NULL != img ? img : data );
 
 			check_for_GL_errors( "glTexImage2D" );
 			/*printf( "OpenGL DXT compressor\n" );	*/
 		}
 
 		/*	are any MIPmaps desired?	*/
-		if( flags & SOIL_FLAG_MIPMAPS )
+		if( flags & SOIL_FLAG_MIPMAPS || flags & SOIL_FLAG_GL_MIPMAPS )
 		{
-			int MIPlevel = 1;
-			int MIPwidth = (iwidth+1) / 2;
-			int MIPheight = (iheight+1) / 2;
-			unsigned char *resampled = (unsigned char*)malloc( channels*MIPwidth*MIPheight );
-			while( ((1<<MIPlevel) <= iwidth) || ((1<<MIPlevel) <= iheight) )
-			{
-				/*	do this MIPmap level	*/
-				mipmap_image(
-						img, iwidth, iheight, channels,
-						resampled,
-						(1 << MIPlevel), (1 << MIPlevel) );
-				/*  upload the MIPmaps	*/
-				if( DXT_mode == SOIL_CAPABILITY_PRESENT )
-				{
-					/*	user wants me to do the DXT conversion!	*/
-					int DDS_size;
-					unsigned char *DDS_data = NULL;
-					if( (channels & 1) == 1 )
-					{
-						/*	RGB, use DXT1	*/
-						DDS_data = convert_image_to_DXT1(
-								resampled, MIPwidth, MIPheight, channels, &DDS_size );
-					} else
-					{
-						/*	RGBA, use DXT5	*/
-						DDS_data = convert_image_to_DXT5(
-								resampled, MIPwidth, MIPheight, channels, &DDS_size );
-					}
-					if( DDS_data )
-					{
-						soilGlCompressedTexImage2D(
-							opengl_texture_target, MIPlevel,
-							internal_texture_format, MIPwidth, MIPheight, 0,
-							DDS_size, DDS_data );
-						check_for_GL_errors( "glCompressedTexImage2D" );
-						SOIL_free_image_data( DDS_data );
-					} else
-					{
-						/*	my compression failed, try the OpenGL driver's version	*/
-						glTexImage2D(
-							opengl_texture_target, MIPlevel,
-							internal_texture_format, MIPwidth, MIPheight, 0,
-							original_texture_format, GL_UNSIGNED_BYTE, resampled );
-						check_for_GL_errors( "glTexImage2D" );
-					}
-				} else
-				{
-					/*	user want OpenGL to do all the work!	*/
-					glTexImage2D(
-						opengl_texture_target, MIPlevel,
-						internal_texture_format, MIPwidth, MIPheight, 0,
-						original_texture_format, GL_UNSIGNED_BYTE, resampled );
-					check_for_GL_errors( "glTexImage2D" );
-				}
-				/*	prep for the next level	*/
-				++MIPlevel;
-				MIPwidth = (MIPwidth + 1) / 2;
-				MIPheight = (MIPheight + 1) / 2;
-			}
-			SOIL_free_image_data( resampled );
+			createMipmaps( NULL != img ? img : data, iwidth, iheight, channels, flags, opengl_texture_target, internal_texture_format, original_texture_format, DXT_mode );
+
 			/*	instruct OpenGL to use the MIPmaps	*/
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
@@ -1698,8 +1729,7 @@ unsigned int
 		result_string_pointer = "Failed to generate an OpenGL texture name; missing OpenGL context?";
 	}
 
-	if ( needCopy )
-		SOIL_free_image_data( img );
+	SOIL_free_image_data( img );
 
 	return tex_id;
 }
@@ -1734,12 +1764,12 @@ int
 		return 0;
 	}
 
-    /*  Get the data from OpenGL	*/
-    pixel_data = (unsigned char*)malloc( 3*width*height );
-    glReadPixels (x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixel_data);
+	/*  Get the data from OpenGL	*/
+	pixel_data = (unsigned char*)malloc( 3*width*height );
+	glReadPixels (x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixel_data);
 
-    /*	invert the image	*/
-    for( j = 0; j*2 < height; ++j )
+	/*	invert the image	*/
+	for( j = 0; j*2 < height; ++j )
 	{
 		int index1 = j * width * 3;
 		int index2 = (height - 1 - j) * width * 3;
@@ -1753,11 +1783,11 @@ int
 		}
 	}
 
-    /*	save the image	*/
-    save_result = SOIL_save_image( filename, image_type, width, height, 3, pixel_data);
+	/*	save the image	*/
+	save_result = SOIL_save_image( filename, image_type, width, height, 3, pixel_data);
 
-    /*  And free the memory	*/
-    SOIL_free_image_data( pixel_data );
+	/*	And free the memory	*/
+	SOIL_free_image_data( pixel_data );
 	return save_result;
 }
 
@@ -2355,10 +2385,10 @@ unsigned int SOIL_direct_load_PVR_from_memory(
 			return 0;
 	}
 
-	#ifndef SOIL_GLES2
+	#ifdef SOIL_GLES1
 	//  check that this data is cube map data or not.
 	if( loading_as_cubemap ) {
-		result_string_pointer = "cube map textures are not available in OGLES1.x.";
+		result_string_pointer = "cube map textures are not available in GLES1.x.";
 		return 0;
 	}
 	#endif
@@ -2853,4 +2883,57 @@ int query_ETC1_capability( void )
 	}
 	/*	let the user know if we can do cubemaps or not	*/
 	return has_ETC1_capability;
+}
+
+int query_gen_mipmap_capability( void )
+{
+	/* check for the capability   */
+	P_SOIL_GLGENERATEMIPMAPPROC ext_addr = NULL;
+
+	if( has_gen_mipmap_capability == SOIL_CAPABILITY_UNKNOWN )
+	{
+		if (	0 == SOIL_GL_ExtensionSupported(
+					"GL_ARB_framebuffer_object" )
+			&&
+				0 == SOIL_GL_ExtensionSupported(
+					"GL_EXT_framebuffer_object" )
+			&&  0 == SOIL_GL_ExtensionSupported(
+					"GL_OES_framebuffer_object" )
+			)
+		{
+			/* not there, flag the failure */
+			has_gen_mipmap_capability = SOIL_CAPABILITY_NONE;
+		}
+		else
+		{
+			#if !defined( SOIL_GLES1 ) && !defined( SOIL_GLES2 )
+
+			ext_addr = (P_SOIL_GLGENERATEMIPMAPPROC)SOIL_GL_GetProcAddress("glGenerateMipmap");
+
+			if(ext_addr == NULL)
+			{
+				ext_addr = (P_SOIL_GLGENERATEMIPMAPPROC)SOIL_GL_GetProcAddress("glGenerateMipmapEXT");
+			}
+
+			#elif defined( SOIL_GLES2 )
+				ext_addr = 	&glGenerateMipmap;
+			#else /** SOIL_GLES1 */
+				ext_addr = &glGenerateMipmapOES;
+			#endif
+		}
+
+
+		if(ext_addr == NULL)
+		{
+			/* this should never happen */
+			has_gen_mipmap_capability = SOIL_CAPABILITY_NONE;
+		} else
+		{
+			/* it's there! */
+			has_gen_mipmap_capability = SOIL_CAPABILITY_PRESENT;
+			soilGlGenerateMipmap = ext_addr;
+		}
+	}
+
+	return has_gen_mipmap_capability;
 }
