@@ -182,7 +182,7 @@ int main( int argc, char* argv[] )
 
 	while( running )
 	{
-		double dt = (double)(SDL_GetPerformanceCounter() - counterOld) / (double)SDL_GetPerformanceFrequency();
+		float dt = (float)((double)(SDL_GetPerformanceCounter() - counterOld) / (double)SDL_GetPerformanceFrequency());
 		counterOld = SDL_GetPerformanceCounter();
 
 		SDL_Event evt;
