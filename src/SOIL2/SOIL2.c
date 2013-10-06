@@ -209,7 +209,7 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 #elif defined( SOIL_PLATFORM_WIN32 )
 	func =  wglGetProcAddress( proc );
 
-	if (!soilTestWinProcPointer(func))
+	if (!soilTestWinProcPointer((const PROC)func))
 		func = NULL;
 #elif defined( SOIL_PLATFORM_OSX )
 	/*	I can't test this Apple stuff!	*/
