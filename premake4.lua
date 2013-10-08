@@ -133,3 +133,40 @@ solution "SOIL2"
 			defines { "NDEBUG" }
 			flags { "Optimize" }
 			targetname "soil2-test-release"
+			
+	project "soil2-perf-test"
+		kind "ConsoleApp"
+		language "C++"
+		links { "soil2-static-lib" }
+		files { "src/perf_test/*.cpp" }
+
+		configuration "mingw32"
+			links { "mingw32" }
+
+		configuration "windows"
+			links {"opengl32","SDL2main","SDL2"}
+
+		configuration "linux"
+			links {"GL","SDL2"}
+		
+		configuration "macosx"
+			links {"OpenGL.framework","CoreFoundation.framework","SDL2.framework"}
+		
+		configuration "haiku"
+			links {"GL","SDL2"}
+
+		configuration "freebsd"
+			links {"GL","SDL2"}
+		
+		configuration "debug"
+			defines { "DEBUG" }
+			flags { "Symbols" }
+			if not is_vs() then
+				buildoptions{ "-Wall" }
+			end
+			targetname "soil2-perf-test-debug"
+
+		configuration "release"
+			defines { "NDEBUG" }
+			flags { "Optimize" }
+			targetname "soil2-perf-test-release"
