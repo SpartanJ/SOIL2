@@ -23,14 +23,14 @@
 
 double get_total_ms( Uint64 time_me )
 {
-	 return ( (double)(SDL_GetPerformanceCounter() - time_me) / (double)SDL_GetPerformanceFrequency() ) * 1000;
+	return ( (double)(SDL_GetPerformanceCounter() - time_me) / (double)SDL_GetPerformanceFrequency() ) * 1000;
 }
 
 int main( int argc, char* argv[] )
 {
 	GLboolean running;
 
-	// Initialise GLFW
+	// Initialise SDL2
 	if( 0 != SDL_Init( SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
 	{
 		fprintf( stderr, "Failed to initialize SDL2: %s\n", SDL_GetError() );
@@ -253,7 +253,7 @@ int main( int argc, char* argv[] )
 		SDL_GL_SwapWindow( window );
 	}
 
-	// Close OpenGL window and terminate GLFW
+	// Close OpenGL window and terminate SDL2
 	SDL_GL_DeleteContext( context );
 
 	SDL_DestroyWindow( window );
