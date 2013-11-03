@@ -1634,7 +1634,10 @@ unsigned int
 
 		/* set the unpack aligment */
 		glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_aligment);
-		glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+		if ( 1 != unpack_aligment )
+		{
+			glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+		}
 
 		/*  upload the main image	*/
 		if( DXT_mode == SOIL_CAPABILITY_PRESENT )
@@ -1700,7 +1703,10 @@ unsigned int
 		}
 
 		/* recover the unpack aligment */
-		glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+		if ( 1 != unpack_aligment )
+		{
+			glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+		}
 
 		/*	does the user want clamping, or wrapping?	*/
 		if( flags & SOIL_FLAG_TEXTURE_REPEATS )
@@ -2413,7 +2419,10 @@ unsigned int SOIL_direct_load_PVR_from_memory(
 	}
 
 	glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_aligment);
-	glPixelStorei(GL_UNPACK_ALIGNMENT,1);				// Never have row-aligned in headers
+	if ( 1 != unpack_aligment )
+	{
+		glPixelStorei(GL_UNPACK_ALIGNMENT,1);				// Never have row-aligned in headers
+	}
 
 	#define _MAX( a, b ) (( a <= b )? b : a)
 	for(i=0; i<num_surfs; i++) {
@@ -2460,7 +2469,10 @@ unsigned int SOIL_direct_load_PVR_from_memory(
 
 			if( glGetError() ) {
 				result_string_pointer = "failed: glCompressedTexImage2D() failed.";
-				glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+				if ( 1 != unpack_aligment )
+				{
+					glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+				}
 				return 0;
 			}
 
@@ -2476,7 +2488,10 @@ unsigned int SOIL_direct_load_PVR_from_memory(
 	}
 	#undef _MAX
 
-	glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+	if ( 1 != unpack_aligment )
+	{
+		glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+	}
 
 	if( tex_ID )
 	{
@@ -2604,17 +2619,27 @@ unsigned int SOIL_direct_load_ETC1_from_memory(
 	}
 
 	glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_aligment);
-	glPixelStorei(GL_UNPACK_ALIGNMENT,1);				// Never have row-aligned in headers
+	if ( 1 != unpack_aligment )
+	{
+		glPixelStorei(GL_UNPACK_ALIGNMENT,1);				// Never have row-aligned in headers
+	}
 
 	soilGlCompressedTexImage2D( opengl_texture_type, 0, SOIL_GL_ETC1_RGB8_OES, width, height, 0, compressed_image_size, texture_ptr );
 
 	if( glGetError() ) {
 		result_string_pointer = "failed: glCompressedTexImage2D() failed.";
-		glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+
+		if ( 1 != unpack_aligment )
+		{
+			glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+		}
 		return 0;
 	}
 
-	glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+	if ( 1 != unpack_aligment )
+	{
+		glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+	}
 
 	if( tex_ID )
 	{
