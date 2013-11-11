@@ -27,6 +27,7 @@
 
 	#if defined( __IPHONE__ ) || ( defined( TARGET_OS_IPHONE ) && TARGET_OS_IPHONE ) || ( defined( TARGET_IPHONE_SIMULATOR ) && TARGET_IPHONE_SIMULATOR )
 		#define SOIL_PLATFORM_IOS
+		#include <dlfcn.h>
 	#else
 		#define SOIL_PLATFORM_OSX
 	#endif
@@ -36,6 +37,10 @@
 
 #if ( defined( SOIL_PLATFORM_IOS ) || defined( SOIL_PLATFORM_ANDROID ) ) && ( !defined( SOIL_GLES1 ) && !defined( SOIL_GLES2 ) )
 	#define SOIL_GLES1
+#endif
+
+#if ( defined( SOIL_GLES2 ) || defined( SOIL_GLES1 ) ) && !defined( SOIL_NO_EGL ) && !defined( SOIL_PLATFORM_IOS )
+	#include <EGL/egl.h>
 #endif
 
 #if defined( SOIL_GLES2 )
@@ -153,9 +158,6 @@ int query_DXT_capability( void );
 typedef void (APIENTRY * P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC) (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid * data);
 static P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC soilGlCompressedTexImage2D = NULL;
 
-typedef const GLubyte *(APIENTRY * P_SOIL_glGetStringiFunc) (GLenum, GLuint);
-static P_SOIL_glGetStringiFunc soilGlGetStringiFunc = NULL;
-
 typedef void (APIENTRY *P_SOIL_GLGENERATEMIPMAPPROC)(GLenum target);
 static P_SOIL_GLGENERATEMIPMAPPROC soilGlGenerateMipmap = NULL;
 
@@ -176,6 +178,10 @@ int query_ETC1_capability( void );
 #define SOIL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG                     0x8C03
 #define SOIL_GL_ETC1_RGB8_OES                                     0x8D64
 
+#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX )
+typedef const GLubyte *(APIENTRY * P_SOIL_glGetStringiFunc) (GLenum, GLuint);
+static P_SOIL_glGetStringiFunc soilGlGetStringiFunc = NULL;
+
 static int isAtLeastGL3()
 {
 	static int is_gl3 = SOIL_CAPABILITY_UNKNOWN;
@@ -188,6 +194,7 @@ static int isAtLeastGL3()
 
 	return is_gl3;
 }
+#endif
 
 #ifdef SOIL_PLATFORM_WIN32
 static int soilTestWinProcPointer(const PROC pTest)
@@ -204,8 +211,14 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 {
 	void *func = NULL;
 
-#if defined( SOIL_GLES2 ) || defined( SOIL_GLES1 )
-	func = NULL;
+#if defined( SOIL_PLATFORM_IOS )
+	func = dlsym( RTLD_DEFAULT, proc );
+#elif defined( SOIL_GLES2 ) || defined( SOIL_GLES1 )
+	#ifndef SOIL_NO_EGL
+		func = eglGetProcAddress( proc );
+	#else
+		func = NULL;
+	#endif
 #elif defined( SOIL_PLATFORM_WIN32 )
 	func =  wglGetProcAddress( proc );
 
@@ -2813,8 +2826,16 @@ int query_DXT_capability( void )
 	if( has_DXT_capability == SOIL_CAPABILITY_UNKNOWN )
 	{
 		/*	we haven't yet checked for the capability, do so	*/
-		if( 0 == SOIL_GL_ExtensionSupported(
-				"GL_EXT_texture_compression_s3tc" ) )
+		if (	0 == SOIL_GL_ExtensionSupported(
+					"GL_EXT_texture_compression_s3tc" )  &&
+				0 == SOIL_GL_ExtensionSupported(
+					"WEBGL_compressed_texture_s3tc ") &&
+				0 == SOIL_GL_ExtensionSupported(
+					"WEBKIT_WEBGL_compressed_texture_s3tc") &&
+				0 == SOIL_GL_ExtensionSupported(
+					"MOZ_WEBGL_compressed_texture_s3tc"
+				)
+			)
 		{
 			/*	not there, flag the failure	*/
 			has_DXT_capability = SOIL_CAPABILITY_NONE;
@@ -2951,7 +2972,6 @@ int query_gen_mipmap_capability( void )
 				ext_addr = &glGenerateMipmapOES;
 			#endif
 		}
-
 
 		if(ext_addr == NULL)
 		{
