@@ -102,6 +102,10 @@
 #define GL_BGRA                                             0x80E1
 #endif
 
+#ifndef GL_RG
+#define GL_RG                             0x8227
+#endif
+
 #include "SOIL2.h"
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -1610,10 +1614,18 @@ unsigned int
 		switch( channels )
 		{
 		case 1:
+			#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX )
+			original_texture_format = isAtLeastGL3() ? GL_RED : GL_LUMINANCE;
+			#else
 			original_texture_format = GL_LUMINANCE;
+			#endif
 			break;
 		case 2:
+			#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX )
+			original_texture_format = isAtLeastGL3() ? GL_RG : GL_LUMINANCE_ALPHA;
+			#else
 			original_texture_format = GL_LUMINANCE_ALPHA;
+			#endif
 			break;
 		case 3:
 			original_texture_format = GL_RGB;
