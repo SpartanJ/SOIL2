@@ -381,7 +381,7 @@ static etc1_bool inRange4bitSigned(int color) {
 
 static void etc_encodeBaseColors(etc1_byte* pBaseColors,
         const etc1_byte* pColors, etc_compressed* pCompressed) {
-    int r1, g1, b1, r2, g2, b2; // 8 bit base colors for sub-blocks
+    int r1, g1, b1, r2 = 0, g2 = 0, b2 = 0; // 8 bit base colors for sub-blocks
 	etc1_bool differential;
     {
         int r51 = convert8To5(pColors[0]);

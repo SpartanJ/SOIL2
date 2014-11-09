@@ -2755,7 +2755,7 @@ static stbi_uc *bmp_load(stbi *s, int *x, int *y, int *comp, int req_comp)
                   mg = 0xffu <<  8;
                   mb = 0xffu <<  0;
                   ma = 0xffu << 24;
-				  /*fake_a = 1;*/ // @TODO: check for cases like alpha value is all 0 and switch it to 255
+                  /*fake_a = 1;*/ // @TODO: check for cases like alpha value is all 0 and switch it to 255
                } else {
                   mr = 31u << 10;
                   mg = 31u <<  5;
@@ -3053,7 +3053,7 @@ static stbi_uc *tga_load(stbi *s, int *x, int *y, int *comp, int req_comp)
       skip(s, tga_palette_start );
       //   load the palette
       tga_palette = (unsigned char*)malloc( tga_palette_len * tga_palette_bits / 8 );
-      if (!tga_palette) return epuc("outofmem", "Out of memory");
+      if (!tga_palette) { free(tga_data); return epuc("outofmem", "Out of memory"); }
       if (!getn(s, tga_palette, tga_palette_len * tga_palette_bits / 8 )) {
          free(tga_data);
          free(tga_palette);
@@ -4173,17 +4173,17 @@ static int stbi_hdr_info(stbi *s, int *x, int *y, int *comp)
 }
 #endif // STBI_NO_HDR
 
-//	add in my DDS loading support
+// add in my DDS loading support
 #ifndef STBI_NO_DDS
 #include "stbi_DDS_c.h"
 #endif
 
-//	add in my pvr loading support
+// add in my pvr loading support
 #ifndef STBI_NO_PVR
 #include "stbi_pvr_c.h"
 #endif
 
-//	add in my pkm ( ETC1 ) loading support
+// add in my pkm ( ETC1 ) loading support
 #ifndef STBI_NO_PKM
 #include "stbi_pkm_c.h"
 #endif
@@ -4312,11 +4312,11 @@ static int stbi_info_main(stbi *s, int *x, int *y, int *comp)
    #endif
    #ifndef STBI_NO_PVR
    if (stbi_pvr_info(s, x, y, comp, NULL))
-	   return 1;
+       return 1;
    #endif
    #ifndef STBI_NO_PKM
    if (stbi_pkm_info(s, x, y, comp))
-	   return 1;
+       return 1;
    #endif
    #ifndef STBI_NO_HDR
    if (stbi_hdr_info(s, x, y, comp))
