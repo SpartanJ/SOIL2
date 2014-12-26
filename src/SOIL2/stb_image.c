@@ -5711,3 +5711,7 @@ STBIDEF int stbi_info_from_callbacks(stbi_io_callbacks const *c, void *user, int
 #ifndef STBI_NO_PKM
 #include "stbi_pkm_c.h"
 #endif
+
+#ifndef STBI_NO_EXT
+#include "stbi_ext_c.h"
+#endif

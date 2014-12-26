@@ -1,5 +1,5 @@
 
-static int stbi_test_main(stbi *s)
+static int stbi_test_main(stbi__context *s)
 {
    #ifndef STBI_NO_JPEG
    if (stbi__jpeg_test(s)) return STBI_jpeg;
