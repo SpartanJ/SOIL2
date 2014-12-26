@@ -1,33 +1,50 @@
 
 static int stbi_test_main(stbi *s)
 {
-   if (stbi_jpeg_test(s)) return STBI_jpeg;
-   if (stbi_png_test(s))  return STBI_png;
-   if (stbi_bmp_test(s))  return STBI_bmp;
-   if (stbi_gif_test(s))  return STBI_gif;
-   if (stbi_psd_test(s))  return STBI_psd;
-   if (stbi_pic_test(s))  return STBI_pic;
+   #ifndef STBI_NO_JPEG
+   if (stbi__jpeg_test(s)) return STBI_jpeg;
+   #endif
+   #ifndef STBI_NO_PNG
+   if (stbi__png_test(s))  return STBI_png;
+   #endif
+   #ifndef STBI_NO_BMP
+   if (stbi__bmp_test(s))  return STBI_bmp;
+   #endif
+   #ifndef STBI_NO_GIF
+   if (stbi__gif_test(s))  return STBI_gif;
+   #endif
+   #ifndef STBI_NO_PSD
+   if (stbi__psd_test(s))  return STBI_psd;
+   #endif
+   #ifndef STBI_NO_PIC
+   if (stbi__pic_test(s))  return STBI_pic;
+   #endif
+   #ifndef STBI_NO_PNM
+   if (stbi__pnm_test(s))  return STBI_pnm;
+   #endif
    #ifndef STBI_NO_DDS
-   if (stbi_dds_test(s))  return STBI_dds;
+   if (stbi__dds_test(s))  return STBI_dds;
    #endif
    #ifndef STBI_NO_PVR
-   if (stbi_pvr_test(s))  return STBI_pvr;
+   if (stbi__pvr_test(s))  return STBI_pvr;
    #endif
    #ifndef STBI_NO_PKM
-   if (stbi_pkm_test(s))  return STBI_pkm;
+   if (stbi__pkm_test(s))  return STBI_pkm;
    #endif
    #ifndef STBI_NO_HDR
-   if (stbi_hdr_test(s))  return STBI_hdr;
+   if (stbi__hdr_test(s))  return STBI_hdr;
    #endif
-   if (stbi_tga_test(s))  return STBI_tga;
+   #ifndef STBI_NO_TGA
+   if (stbi__tga_test(s))  return STBI_tga;
+   #endif
    return STBI_unknown;
 }
 
 #ifndef STBI_NO_STDIO
 int stbi_test_from_file(FILE *f)
 {
-   stbi s;
-   start_file(&s,f);
+   stbi__context s;
+   stbi__start_file(&s,f);
    return stbi_test_main(&s);
 }
 
@@ -44,14 +61,14 @@ int stbi_test(char const *filename)
 
 int stbi_test_from_memory(stbi_uc const *buffer, int len)
 {
-   stbi s;
-   start_mem(&s,buffer,len);
+   stbi__context s;
+   stbi__start_mem(&s,buffer,len);
    return stbi_test_main(&s);
 }
 
 int stbi_test_from_callbacks(stbi_io_callbacks const *clbk, void *user)
 {
-   stbi s;
-   start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
+   stbi__context s;
+   stbi__start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
    return stbi_test_main(&s);
 }

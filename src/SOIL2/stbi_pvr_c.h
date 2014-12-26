@@ -1,80 +1,80 @@
 #include "pvr_helper.h"
 
-static int stbi_pvr_test(stbi *s)
+static int stbi__pvr_test(stbi__context *s)
 {
 	//	check header size
-	if (get32le(s) != sizeof(PVR_Texture_Header)) {
-		stbi_rewind(s);
+	if (stbi__get32le(s) != sizeof(PVR_Texture_Header)) {
+		stbi__rewind(s);
 		return 0;
 	}
 
-	// skip until the magic number
-	skip(s, 10*4);
+	// stbi__skip until the magic number
+	stbi__skip(s, 10*4);
 
 	// check the magic number
-	if ( get32le(s) != PVRTEX_IDENTIFIER ) {
-		stbi_rewind(s);
+	if ( stbi__get32le(s) != PVRTEX_IDENTIFIER ) {
+		stbi__rewind(s);
 		return 0;
 	}
 
 	// Also rewind because the loader needs to read the header
-	stbi_rewind(s);
+	stbi__rewind(s);
 
 	return 1;
 }
 
 #ifndef STBI_NO_STDIO
 
-int      stbi_pvr_test_filename        		(char const *filename)
+int      stbi__pvr_test_filename        		(char const *filename)
 {
    int r;
    FILE *f = fopen(filename, "rb");
    if (!f) return 0;
-   r = stbi_pvr_test_file(f);
+   r = stbi__pvr_test_file(f);
    fclose(f);
    return r;
 }
 
-int      stbi_pvr_test_file        (FILE *f)
+int      stbi__pvr_test_file        (FILE *f)
 {
-   stbi s;
+   stbi__context s;
    int r,n = ftell(f);
-   start_file(&s,f);
-   r = stbi_pvr_test(&s);
+   stbi__start_file(&s,f);
+   r = stbi__pvr_test(&s);
    fseek(f,n,SEEK_SET);
    return r;
 }
 #endif
 
-int      stbi_pvr_test_memory      (stbi_uc const *buffer, int len)
+int      stbi__pvr_test_memory      (stbi_uc const *buffer, int len)
 {
-   stbi s;
-   start_mem(&s,buffer, len);
-   return stbi_pvr_test(&s);
+   stbi__context s;
+   stbi__start_mem(&s,buffer, len);
+   return stbi__pvr_test(&s);
 }
 
-int      stbi_pvr_test_callbacks      (stbi_io_callbacks const *clbk, void *user)
+int      stbi__pvr_test_callbacks      (stbi_io_callbacks const *clbk, void *user)
 {
-   stbi s;
-   start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
-   return stbi_pvr_test(&s);
+   stbi__context s;
+   stbi__start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
+   return stbi__pvr_test(&s);
 }
 
-static int stbi_pvr_info(stbi *s, int *x, int *y, int *comp, int * iscompressed )
+static int stbi__pvr_info(stbi__context *s, int *x, int *y, int *comp, int * iscompressed )
 {
 	PVR_Texture_Header header;
 
-	getn( s, (stbi_uc*)(&header), sizeof(PVR_Texture_Header) );
+	stbi__getn( s, (stbi_uc*)(&header), sizeof(PVR_Texture_Header) );
 
 	// Check the header size
 	if ( header.dwHeaderSize != sizeof(PVR_Texture_Header) ) {
-		stbi_rewind( s );
+		stbi__rewind( s );
 		return 0;
 	}
 
 	// Check the magic identifier
 	if ( header.dwPVR != PVRTEX_IDENTIFIER ) {
-		stbi_rewind(s);
+		stbi__rewind(s);
 		return 0;
 	}
 
@@ -120,7 +120,7 @@ static int stbi_pvr_info(stbi *s, int *x, int *y, int *comp, int * iscompressed 
 			break;
 		case OGL_RGB_555:
 		default:
-			stbi_rewind(s);
+			stbi__rewind(s);
 			return 0;
 	}
 
@@ -129,38 +129,38 @@ static int stbi_pvr_info(stbi *s, int *x, int *y, int *comp, int * iscompressed 
 	return 1;
 }
 
-int stbi_pvr_info_from_memory (stbi_uc const *buffer, int len, int *x, int *y, int *comp, int * iscompressed )
+int stbi__pvr_info_from_memory (stbi_uc const *buffer, int len, int *x, int *y, int *comp, int * iscompressed )
 {
-	stbi s;
-	start_mem(&s,buffer, len);
-	return stbi_pvr_info( &s, x, y, comp, iscompressed );
+	stbi__context s;
+	stbi__start_mem(&s,buffer, len);
+	return stbi__pvr_info( &s, x, y, comp, iscompressed );
 }
 
-int stbi_pvr_info_from_callbacks (stbi_io_callbacks const *clbk, void *user, int *x, int *y, int *comp, int * iscompressed)
+int stbi__pvr_info_from_callbacks (stbi_io_callbacks const *clbk, void *user, int *x, int *y, int *comp, int * iscompressed)
 {
-	stbi s;
-	start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
-	return stbi_pvr_info( &s, x, y, comp, iscompressed );
+	stbi__context s;
+	stbi__start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
+	return stbi__pvr_info( &s, x, y, comp, iscompressed );
 }
 
 #ifndef STBI_NO_STDIO
-int stbi_pvr_info_from_path(char const *filename,     int *x, int *y, int *comp, int * iscompressed)
+int stbi__pvr_info_from_path(char const *filename,     int *x, int *y, int *comp, int * iscompressed)
 {
    int res;
    FILE *f = fopen(filename, "rb");
    if (!f) return 0;
-   res = stbi_pvr_info_from_file( f, x, y, comp, iscompressed );
+   res = stbi__pvr_info_from_file( f, x, y, comp, iscompressed );
    fclose(f);
    return res;
 }
 
-int stbi_pvr_info_from_file(FILE *f,                  int *x, int *y, int *comp, int * iscompressed)
+int stbi__pvr_info_from_file(FILE *f,                  int *x, int *y, int *comp, int * iscompressed)
 {
-   stbi s;
+   stbi__context s;
    int res;
    long n = ftell(f);
-   start_file(&s, f);
-   res = stbi_pvr_info(&s, x, y, comp, iscompressed);
+   stbi__start_file(&s, f);
+   res = stbi__pvr_info(&s, x, y, comp, iscompressed);
    fseek(f, n, SEEK_SET);
    return res;
 }
@@ -875,7 +875,7 @@ static void Decompress(AMTC_BLOCK_STRUCT *pCompressedData,
 
 }
 
-static stbi_uc * stbi_pvr_load(stbi *s, int *x, int *y, int *comp, int req_comp)
+static stbi_uc * stbi__pvr_load(stbi__context *s, int *x, int *y, int *comp, int req_comp)
 {
 	stbi_uc *pvr_data = NULL;
 	stbi_uc *pvr_res_data = NULL;
@@ -884,7 +884,7 @@ static stbi_uc * stbi_pvr_load(stbi *s, int *x, int *y, int *comp, int req_comp)
 	int bitmode = 0;
 	unsigned int levelSize = 0;
 
-	getn( s, (stbi_uc*)(&header), sizeof(PVR_Texture_Header) );
+	stbi__getn( s, (stbi_uc*)(&header), sizeof(PVR_Texture_Header) );
 
 	// Check the header size
 	if ( header.dwHeaderSize != sizeof(PVR_Texture_Header) ) {
@@ -944,7 +944,7 @@ static stbi_uc * stbi_pvr_load(stbi *s, int *x, int *y, int *comp, int req_comp)
 
 	// get the raw data
 	pvr_data = (stbi_uc *)malloc( levelSize );
-	getn( s, pvr_data, levelSize );
+	stbi__getn( s, pvr_data, levelSize );
 
 	// if compressed decompress as RGBA
 	if ( iscompressed ) {
@@ -959,7 +959,7 @@ static stbi_uc * stbi_pvr_load(stbi *s, int *x, int *y, int *comp, int req_comp)
 	if( (req_comp <= 4) && (req_comp >= 1) ) {
 		//	user has some requirements, meet them
 		if( req_comp != s->img_n ) {
-			pvr_res_data = convert_format( pvr_res_data, s->img_n, req_comp, s->img_x, s->img_y );
+			pvr_res_data = stbi__convert_format( pvr_res_data, s->img_n, req_comp, s->img_x, s->img_y );
 			*comp = req_comp;
 		}
 	}
@@ -968,34 +968,34 @@ static stbi_uc * stbi_pvr_load(stbi *s, int *x, int *y, int *comp, int req_comp)
 }
 
 #ifndef STBI_NO_STDIO
-stbi_uc *stbi_pvr_load_from_file   (FILE *f,                  int *x, int *y, int *comp, int req_comp)
+stbi_uc *stbi__pvr_load_from_file   (FILE *f,                  int *x, int *y, int *comp, int req_comp)
 {
-	stbi s;
-	start_file(&s,f);
-	return stbi_pvr_load(&s,x,y,comp,req_comp);
+	stbi__context s;
+	stbi__start_file(&s,f);
+	return stbi__pvr_load(&s,x,y,comp,req_comp);
 }
 
-stbi_uc *stbi_pvr_load_from_path             (char const*filename,           int *x, int *y, int *comp, int req_comp)
+stbi_uc *stbi__pvr_load_from_path             (char const*filename,           int *x, int *y, int *comp, int req_comp)
 {
    stbi_uc *data;
    FILE *f = fopen(filename, "rb");
    if (!f) return NULL;
-   data = stbi_pvr_load_from_file(f,x,y,comp,req_comp);
+   data = stbi__pvr_load_from_file(f,x,y,comp,req_comp);
    fclose(f);
    return data;
 }
 #endif
 
-stbi_uc *stbi_pvr_load_from_memory (stbi_uc const *buffer, int len, int *x, int *y, int *comp, int req_comp)
+stbi_uc *stbi__pvr_load_from_memory (stbi_uc const *buffer, int len, int *x, int *y, int *comp, int req_comp)
 {
-   stbi s;
-   start_mem(&s,buffer, len);
-   return stbi_pvr_load(&s,x,y,comp,req_comp);
+   stbi__context s;
+   stbi__start_mem(&s,buffer, len);
+   return stbi__pvr_load(&s,x,y,comp,req_comp);
 }
 
-stbi_uc *stbi_pvr_load_from_callbacks (stbi_io_callbacks const *clbk, void *user, int *x, int *y, int *comp, int req_comp)
+stbi_uc *stbi__pvr_load_from_callbacks (stbi_io_callbacks const *clbk, void *user, int *x, int *y, int *comp, int req_comp)
 {
-	stbi s;
-   start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
-   return stbi_pvr_load(&s,x,y,comp,req_comp);
+	stbi__context s;
+   stbi__start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
+   return stbi__pvr_load(&s,x,y,comp,req_comp);
 }
