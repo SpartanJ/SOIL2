@@ -4521,7 +4521,7 @@ static stbi_uc *stbi__psd_load(stbi__context *s, int *x, int *y, int *comp, int 
       return stbi__errpuc("bad compression", "PSD has an unknown compression format");
 
    // Create the destination image.
-   out = (stbi_uc *) stbi__malloc(4 * w*h);
+   out = (stbi_uc *) stbi__malloc(channelCount * w*h);
    if (!out) return stbi__errpuc("outofmem", "Out of memory");
    pixelCount = w*h;
 
@@ -4543,13 +4543,13 @@ static stbi_uc *stbi__psd_load(stbi__context *s, int *x, int *y, int *comp, int 
       stbi__skip(s, h * channelCount * 2 );
 
       // Read the RLE data by channel.
-      for (channel = 0; channel < 4; channel++) {
+      for (channel = 0; channel < channelCount; channel++) {
          stbi_uc *p;
 
          p = out+channel;
          if (channel >= channelCount) {
             // Fill this channel with default data.
-            for (i = 0; i < pixelCount; i++) *p = (channel == 3 ? 255 : 0), p += 4;
+            for (i = 0; i < pixelCount; i++) *p = (channel == 3 ? 255 : 0), p += channelCount;
          } else {
             // Read the RLE data.
             count = 0;
@@ -4563,7 +4563,7 @@ static stbi_uc *stbi__psd_load(stbi__context *s, int *x, int *y, int *comp, int 
                   count += len;
                   while (len) {
                      *p = stbi__get8(s);
-                     p += 4;
+                     p += channelCount;
                      len--;
                   }
                } else if (len > 128) {
@@ -4576,7 +4576,7 @@ static stbi_uc *stbi__psd_load(stbi__context *s, int *x, int *y, int *comp, int 
                   count += len;
                   while (len) {
                      *p = val;
-                     p += 4;
+                     p += channelCount;
                      len--;
                   }
                }
@@ -4589,23 +4589,23 @@ static stbi_uc *stbi__psd_load(stbi__context *s, int *x, int *y, int *comp, int 
       // where each channel consists of an 8-bit value for each pixel in the image.
 
       // Read the data by channel.
-      for (channel = 0; channel < 4; channel++) {
+      for (channel = 0; channel < channelCount; channel++) {
          stbi_uc *p;
 
          p = out + channel;
          if (channel > channelCount) {
             // Fill this channel with default data.
-            for (i = 0; i < pixelCount; i++) *p = channel == 3 ? 255 : 0, p += 4;
+            for (i = 0; i < pixelCount; i++) *p = channel == 3 ? 255 : 0, p += channelCount;
          } else {
             // Read the data.
             for (i = 0; i < pixelCount; i++)
-               *p = stbi__get8(s), p += 4;
+               *p = stbi__get8(s), p += channelCount;
          }
       }
    }
 
-   if (req_comp && req_comp != 4) {
-      out = stbi__convert_format(out, 4, req_comp, w, h);
+   if (req_comp && req_comp != channelCount) {
+      out = stbi__convert_format(out, channelCount, req_comp, w, h);
       if (out == NULL) return out; // stbi__convert_format frees input on failure
    }
 
