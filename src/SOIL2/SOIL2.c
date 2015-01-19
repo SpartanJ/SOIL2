@@ -18,10 +18,6 @@
 
 #define SOIL_CHECK_FOR_GL_ERRORS 0
 
-#if defined ( linux ) || defined( __linux__ ) || defined( __FreeBSD__ ) || defined(__OpenBSD__) || defined( __NetBSD__ ) || defined( __DragonFly__ ) || defined( __SVR4 )
-#define SOIL_X11_PLATFORM
-#endif
-
 #if defined( __APPLE_CC__ ) || defined ( __APPLE__ )
 	#include <TargetConditionals.h>
 
@@ -33,10 +29,12 @@
 	#endif
 #elif defined( __ANDROID__ ) || defined( ANDROID )
 	#define SOIL_PLATFORM_ANDROID
+#elif ( defined ( linux ) || defined( __linux__ ) || defined( __FreeBSD__ ) || defined(__OpenBSD__) || defined( __NetBSD__ ) || defined( __DragonFly__ ) || defined( __SVR4 ) )
+	#define SOIL_X11_PLATFORM
 #endif
 
 #if ( defined( SOIL_PLATFORM_IOS ) || defined( SOIL_PLATFORM_ANDROID ) ) && ( !defined( SOIL_GLES1 ) && !defined( SOIL_GLES2 ) )
-	#define SOIL_GLES1
+	#define SOIL_GLES2
 #endif
 
 #if ( defined( SOIL_GLES2 ) || defined( SOIL_GLES1 ) ) && !defined( SOIL_NO_EGL ) && !defined( SOIL_PLATFORM_IOS )
