@@ -102,6 +102,10 @@ solution "SOIL2"
 		language "C++"
 		links { "soil2-static-lib" }
 		files { "src/test/*.cpp" }
+		
+		if os.is("windows") and not is_vs() then
+			links { "mingw32" }
+		end
 
 		configuration "mingw32"
 			links { "mingw32" }
@@ -140,6 +144,10 @@ solution "SOIL2"
 		links { "soil2-static-lib" }
 		files { "src/perf_test/*.cpp" }
 
+		if os.is("windows") and not is_vs() then
+			links { "mingw32" }
+		end
+		
 		configuration "mingw32"
 			links { "mingw32" }
 
