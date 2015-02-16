@@ -122,7 +122,7 @@ typedef unsigned char validate_uint32[sizeof(stbi__uint32)==4 ? 1 : -1];
 #define STBI_NO_SIMD
 #endif
 
-#if !defined(STBI_NO_SIMD) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86))
+#if !defined(STBI_NO_SIMD) && (defined(__x86_64__) || defined(_M_X64))
 #define STBI_SSE2
 #include <emmintrin.h>
 
