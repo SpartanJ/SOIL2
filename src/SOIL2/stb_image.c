@@ -122,7 +122,7 @@ typedef unsigned char validate_uint32[sizeof(stbi__uint32)==4 ? 1 : -1];
 #define STBI_NO_SIMD
 #endif
 
-#if defined(__MINGW32__) && defined(__i386)) && !defined(STBI_NO_SIMD)
+#if defined(__MINGW32__) && defined(__i386) && !defined(STBI_NO_SIMD)
 // 32 bit mingw32 builds are crashing with SSE2, so i disable it
 #define STBI_NO_SIMD
 #endif
