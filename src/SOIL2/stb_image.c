@@ -122,11 +122,6 @@ typedef unsigned char validate_uint32[sizeof(stbi__uint32)==4 ? 1 : -1];
 #define STBI_NO_SIMD
 #endif
 
-#if defined(__MINGW32__) && defined(__i386) && !defined(STBI_NO_SIMD)
-// 32 bit mingw32 builds are crashing with SSE2, so i disable it
-#define STBI_NO_SIMD
-#endif
-
 #if !defined(STBI_NO_SIMD) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386) || defined(_M_IX86))
 #define STBI_SSE2
 #include <emmintrin.h>
@@ -191,6 +186,12 @@ static int stbi__sse2_available()
 
 #ifndef STBI_SIMD_ALIGN
 #define STBI_SIMD_ALIGN(type, name) type name
+#endif
+
+#if defined(__MINGW32__) && !defined(__x86_64__) && defined(STBI_SSE2)
+#define STB_FORCE_STACK_ALIGN __attribute__((force_align_arg_pointer))
+#else
+#define STB_FORCE_STACK_ALIGN
 #endif
 
 ///////////////////////////////////////////////
@@ -2809,7 +2810,7 @@ static stbi_uc *load_jpeg_image(stbi__jpeg *z, int *out_x, int *out_y, int *comp
    }
 }
 
-static unsigned char *stbi__jpeg_load(stbi__context *s, int *x, int *y, int *comp, int req_comp)
+static unsigned char * STB_FORCE_STACK_ALIGN stbi__jpeg_load(stbi__context *s, int *x, int *y, int *comp, int req_comp)
 {
    stbi__jpeg j;
    j.s = s;
