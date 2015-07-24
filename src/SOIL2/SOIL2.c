@@ -1613,18 +1613,10 @@ unsigned int
 		switch( channels )
 		{
 		case 1:
-			#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX )
-			original_texture_format = isAtLeastGL3() ? GL_RED : GL_LUMINANCE;
-			#else
 			original_texture_format = GL_LUMINANCE;
-			#endif
 			break;
 		case 2:
-			#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX )
-			original_texture_format = isAtLeastGL3() ? GL_RG : GL_LUMINANCE_ALPHA;
-			#else
 			original_texture_format = GL_LUMINANCE_ALPHA;
-			#endif
 			break;
 		case 3:
 			original_texture_format = GL_RGB;
