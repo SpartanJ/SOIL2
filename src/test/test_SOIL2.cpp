@@ -3,9 +3,11 @@
 #include <cstdlib>
 #include <string>
 #include <iostream>
+#include "../common/common.hpp"
 #include "../SOIL2/SOIL2.h"
 
-#if ( defined( _MSCVER ) || defined( _MSC_VER ) )
+#define NO_SDL_GLEXT
+#if ( defined( _MSCVER ) || defined( _MSC_VER ) ) || defined( __APPLE_CC__ ) || defined ( __APPLE__ )
 	#include <SDL.h>
 	#include <SDL_opengl.h>
 #else
@@ -70,7 +72,7 @@ int main( int argc, char* argv[] )
 	}
 	else
 	{
-		load_me = "img_test.png";
+		load_me = ResourcePath( "img_test.png" );
 	}
 
 	std::cout << "'" << load_me << "'" << std::endl;

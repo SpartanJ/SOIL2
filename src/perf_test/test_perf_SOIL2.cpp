@@ -4,9 +4,11 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include "../common/common.hpp"
 #include "../SOIL2/SOIL2.h"
 
-#if ( defined( _MSCVER ) || defined( _MSC_VER ) )
+#define NO_SDL_GLEXT
+#if ( defined( _MSCVER ) || defined( _MSC_VER ) ) || defined( __APPLE_CC__ ) || defined ( __APPLE__ )
 	#include <SDL.h>
 	#include <SDL_opengl.h>
 #else
@@ -196,7 +198,7 @@ void DoTest(std::vector<std::string> args)
 	if (files.empty())
 	{
 		for (int i = 0; i < NUM_FILES; ++i)
-			files.push_back(defaultFiles[i]);
+			files.push_back(ResourcePath(defaultFiles[i]));
 	}
 
 	// load files so that there can be cached... this way first test and the second
