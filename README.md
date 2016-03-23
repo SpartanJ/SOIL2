@@ -90,6 +90,8 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 
 * Added `SOIL_GL_GetProcAddress`. To get the address of a GL function.
 
+* sRGB color space support.
+
 * Added support for OpenGL Core Profile.
 
 * And some minor fixes.
