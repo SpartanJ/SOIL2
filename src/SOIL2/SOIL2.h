@@ -24,7 +24,7 @@
 	- TGA		load & save
 	- DDS		load & save
 	- PNG		load & save
-	- JPG		load
+	- JPG		load & save
 	- PSD		load
 	- HDR		load
 	- PIC		load
@@ -128,7 +128,8 @@ enum
 	SOIL_SAVE_TYPE_TGA = 0,
 	SOIL_SAVE_TYPE_BMP = 1,
 	SOIL_SAVE_TYPE_PNG = 2,
-	SOIL_SAVE_TYPE_DDS = 3
+	SOIL_SAVE_TYPE_DDS = 3,
+	SOIL_SAVE_TYPE_JPG = 4
 };
 
 /**
@@ -404,8 +405,19 @@ unsigned char*
 
 /**
 	Saves an image from an array of unsigned chars (RGBA) to disk
+	\param quality parameter only used for SOIL_SAVE_TYPE_JPG files, values accepted between 0 and 100.
 	\return 0 if failed, otherwise returns 1
 **/
+int
+	SOIL_save_image_quality
+	(
+		const char *filename,
+		int image_type,
+		int width, int height, int channels,
+		const unsigned char *const data,
+		int quality
+	);
+
 int
 	SOIL_save_image
 	(
