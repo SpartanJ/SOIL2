@@ -113,6 +113,7 @@
 #include "image_DXT.h"
 #include "pvr_helper.h"
 #include "pkm_helper.h"
+#include "jo_jpeg.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1881,6 +1882,7 @@ unsigned char*
 	return result;
 }
 
+
 int
 	SOIL_save_image
 	(
@@ -1888,6 +1890,19 @@ int
 		int image_type,
 		int width, int height, int channels,
 		const unsigned char *const data
+	)
+{
+	return SOIL_save_image_quality( filename, image_type, width, height, channels, data, 80 );
+}
+
+int
+	SOIL_save_image_quality
+	(
+		const char *filename,
+		int image_type,
+		int width, int height, int channels,
+		const unsigned char *const data,
+		int quality
 	)
 {
 	int save_result;
@@ -1920,6 +1935,11 @@ int
 		save_result = stbi_write_png( filename,
 				width, height, channels, (const unsigned char *const)data, 0 );
 	} else
+	if ( image_type == SOIL_SAVE_TYPE_JPG )
+	{
+		save_result = jo_write_jpg( filename, (const void*)data, width, height, channels, quality );
+	}
+	else
 	{
 		save_result = 0;
 	}

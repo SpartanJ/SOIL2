@@ -39,6 +39,7 @@ Public Domain
     * BMP - RGB, uncompressed
     * DDS - RGB as DXT1, or RGBA as DXT5
     * PNG
+    * JPG
 
 
 * Can load an image file directly into a 2D OpenGL texture, optionally performing the following functions:
@@ -74,7 +75,7 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 
 * Added support for GIF and PIC formats ( thanks to additions to stb_image ).
 
-* Save images to PNG ( thanks to additions to stb_image ).
+* Save images to PNG ( thanks to additions to stb_image ) and JPG.
 
 * `SOIL_create_OGL_texture` expects width and height parameters as pointers, since the real size of the texture loaded could change. This occurs when GL_ARB_texture_non_power_of_two extension is not present and the user tries to load a non-power of two texture.
 
