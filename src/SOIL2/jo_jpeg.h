@@ -114,18 +114,19 @@ static void jo_calcBits(int val, unsigned short bits[2]) {
 static int jo_processDU(FILE *fp, int *bitBuf, int *bitCnt, float *CDU, float *fdtbl, int DC, const unsigned short HTDC[256][2], const unsigned short HTAC[256][2]) {
 	const unsigned short EOB[2] = { HTAC[0x00][0], HTAC[0x00][1] };
 	const unsigned short M16zeroes[2] = { HTAC[0xF0][0], HTAC[0xF0][1] };
-
+	int dataOff, i, nrmarker;
+	
 	// DCT rows
-	for(int dataOff=0; dataOff<64; dataOff+=8) {
+	for(dataOff=0; dataOff<64; dataOff+=8) {
 		jo_DCT(&CDU[dataOff], &CDU[dataOff+1], &CDU[dataOff+2], &CDU[dataOff+3], &CDU[dataOff+4], &CDU[dataOff+5], &CDU[dataOff+6], &CDU[dataOff+7]);
 	}
 	// DCT columns
-	for(int dataOff=0; dataOff<8; ++dataOff) {
+	for(dataOff=0; dataOff<8; ++dataOff) {
 		jo_DCT(&CDU[dataOff], &CDU[dataOff+8], &CDU[dataOff+16], &CDU[dataOff+24], &CDU[dataOff+32], &CDU[dataOff+40], &CDU[dataOff+48], &CDU[dataOff+56]);
 	}
 	// Quantize/descale/zigzag the coefficients
 	int DU[64];
-	for(int i=0; i<64; ++i) {
+	for(i=0; i<64; ++i) {
 		float v = CDU[i]*fdtbl[i];
 		DU[s_jo_ZigZag[i]] = (int)(v < 0 ? ceilf(v - 0.5f) : floorf(v + 0.5f));
 	}
@@ -149,14 +150,14 @@ static int jo_processDU(FILE *fp, int *bitBuf, int *bitCnt, float *CDU, float *f
 		jo_writeBits(fp, bitBuf, bitCnt, EOB);
 		return DU[0];
 	}
-	for(int i = 1; i <= end0pos; ++i) {
+	for(i = 1; i <= end0pos; ++i) {
 		int startpos = i;
 		for (; DU[i]==0 && i<=end0pos; ++i) {
 		}
 		int nrzeroes = i-startpos;
 		if ( nrzeroes >= 16 ) {
 			int lng = nrzeroes>>4;
-			for (int nrmarker=1; nrmarker <= lng; ++nrmarker)
+			for (nrmarker=1; nrmarker <= lng; ++nrmarker)
 				jo_writeBits(fp, bitBuf, bitCnt, M16zeroes);
 			nrzeroes &= 15;
 		}
@@ -239,7 +240,8 @@ int jo_write_jpg(const char *filename, const void *data, int width, int height, 
 	static const int YQT[] = {16,11,10,16,24,40,51,61,12,12,14,19,26,58,60,55,14,13,16,24,40,57,69,56,14,17,22,29,51,87,80,62,18,22,37,56,68,109,103,77,24,35,55,64,81,104,113,92,49,64,78,87,103,121,120,101,72,92,95,98,112,100,103,99};
 	static const int UVQT[] = {17,18,24,47,99,99,99,99,18,21,26,66,99,99,99,99,24,26,56,99,99,99,99,99,47,66,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99};
 	static const float aasf[] = { 1.0f * 2.828427125f, 1.387039845f * 2.828427125f, 1.306562965f * 2.828427125f, 1.175875602f * 2.828427125f, 1.0f * 2.828427125f, 0.785694958f * 2.828427125f, 0.541196100f * 2.828427125f, 0.275899379f * 2.828427125f };
-
+	int i, row, col, x, y, k, pos;
+	
 	if(!data || !filename || !width || !height || comp > 4 || comp < 1 || comp == 2) {
 		return 0;
 	}
@@ -254,7 +256,7 @@ int jo_write_jpg(const char *filename, const void *data, int width, int height, 
 	quality = quality < 50 ? 5000 / quality : 200 - quality * 2;
 
 	unsigned char YTable[64], UVTable[64];
-	for(int i = 0; i < 64; ++i) {
+	for(i = 0; i < 64; ++i) {
 		int yti = (YQT[i]*quality+50)/100;
 		YTable[s_jo_ZigZag[i]] = yti < 1 ? 1 : yti > 255 ? 255 : yti;
 		int uvti  = (UVQT[i]*quality+50)/100;
@@ -262,8 +264,8 @@ int jo_write_jpg(const char *filename, const void *data, int width, int height, 
 	}
 
 	float fdtbl_Y[64], fdtbl_UV[64];
-	for(int row = 0, k = 0; row < 8; ++row) {
-		for(int col = 0; col < 8; ++col, ++k) {
+	for(row = 0, k = 0; row < 8; ++row) {
+		for(col = 0; col < 8; ++col, ++k) {
 			fdtbl_Y[k]  = 1 / (YTable [s_jo_ZigZag[k]] * aasf[row] * aasf[col]);
 			fdtbl_UV[k] = 1 / (UVTable[s_jo_ZigZag[k]] * aasf[row] * aasf[col]);
 		}
@@ -296,11 +298,11 @@ int jo_write_jpg(const char *filename, const void *data, int width, int height, 
 	int DCY=0, DCU=0, DCV=0;
 	int bitBuf=0, bitCnt=0;
 	int ofsG = comp > 1 ? 1 : 0, ofsB = comp > 1 ? 2 : 0;
-	for(int y = 0; y < height; y += 8) {
-		for(int x = 0; x < width; x += 8) {
+	for(y = 0; y < height; y += 8) {
+		for(x = 0; x < width; x += 8) {
 			float YDU[64], UDU[64], VDU[64];
-			for(int row = y, pos = 0; row < y+8; ++row) {
-				for(int col = x; col < x+8; ++col, ++pos) {
+			for(row = y, pos = 0; row < y+8; ++row) {
+				for(col = x; col < x+8; ++col, ++pos) {
 					int p = row*width*comp + col*comp;
 					if(row >= height) {
 						p -= width*comp*(row+1 - height);
