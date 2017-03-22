@@ -203,7 +203,7 @@ void *stbi__pkm_load_from_file   (FILE *f,                  int *x, int *y, int 
 
 void *stbi__pkm_load_from_path             (char const*filename,           int *x, int *y, int *comp, int req_comp)
 {
-   stbi_uc *data;
+   void *data;
    FILE *f = fopen(filename, "rb");
    if (!f) return NULL;
    data = stbi__pkm_load_from_file(f,x,y,comp,req_comp);
