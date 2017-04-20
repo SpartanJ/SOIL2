@@ -2116,23 +2116,13 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	}
 	if( (header.sCaps.dwCaps1 & DDSCAPS_MIPMAP) && (header.dwMipMapCount > 1) )
 	{
-		int shift_offset;
 		mipmaps = header.dwMipMapCount - 1;
 		DDS_full_size = DDS_main_size;
-		if( uncompressed )
-		{
-			/*	uncompressed DDS, simple MIPmap size calculation	*/
-			shift_offset = 0;
-		} else
-		{
-			/*	compressed DDS, MIPmap size calculation is block based	*/
-			shift_offset = 2;
-		}
 		for( i = 1; i <= mipmaps; ++ i )
 		{
 			int w, h;
-			w = width >> (shift_offset + i);
-			h = height >> (shift_offset + i);
+			w = width >> i;
+			h = height >> i;
 			if( w < 1 )
 			{
 				w = 1;
@@ -2141,7 +2131,15 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			{
 				h = 1;
 			}
-			DDS_full_size += w*h*block_size;
+			if ( uncompressed )
+			{
+				/*	uncompressed DDS, simple MIPmap size calculation	*/
+				DDS_full_size += w*h*block_size;
+			} else
+			{
+				/*	compressed DDS, MIPmap size calculation is block based	*/
+				DDS_full_size += ((w+3)/4)*((h+3)/4)*block_size;
+			}
 		}
 	} else
 	{
