@@ -3030,6 +3030,15 @@ int query_gen_mipmap_capability( void )
 				ext_addr = (P_SOIL_GLGENERATEMIPMAPPROC)SOIL_GL_GetProcAddress("glGenerateMipmapEXT");
 			}
 
+			#elif !defined( SOIL_NO_EGL )
+
+			ext_addr = (P_SOIL_GLGENERATEMIPMAPPROC)SOIL_GL_GetProcAddress("glGenerateMipmapOES");
+
+			if(ext_addr == NULL)
+			{
+				ext_addr = (P_SOIL_GLGENERATEMIPMAPPROC)SOIL_GL_GetProcAddress("glGenerateMipmap");
+			}
+
 			#elif defined( SOIL_GLES2 )
 				ext_addr = 	&glGenerateMipmap;
 			#else /** SOIL_GLES1 */
