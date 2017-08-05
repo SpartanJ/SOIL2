@@ -2787,6 +2787,10 @@ int query_NPOT_capability( void )
 			/*	it's there!	*/
 			has_NPOT_capability = SOIL_CAPABILITY_PRESENT;
 		}
+
+		#if defined( __emscripten__ ) || defined( EMSCRIPTEN )
+		has_NPOT_capability = SOIL_CAPABILITY_PRESENT;
+		#endif
 	}
 	/*	let the user know if we can do non-power-of-two textures or not	*/
 	return has_NPOT_capability;
