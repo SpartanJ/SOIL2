@@ -1794,7 +1794,7 @@ int
 	unsigned char *pixel_data;
 	int i, j;
 	int save_result;
-	GLint unpack_aligment;
+	GLint pack_aligment;
 
 	/*	error checks	*/
 	if( (width < 1) || (height < 1) )
@@ -1813,19 +1813,19 @@ int
 		return 0;
 	}
 
-	glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_aligment);
-	if ( 1 != unpack_aligment )
+	glGetIntegerv(GL_PACK_ALIGNMENT, &pack_aligment);
+	if ( 1 != pack_aligment )
 	{
-		glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+		glPixelStorei(GL_PACK_ALIGNMENT,1);
 	}
 
 	/*  Get the data from OpenGL	*/
 	pixel_data = (unsigned char*)malloc( 3*width*height );
 	glReadPixels (x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixel_data);
 
-	if ( 1 != unpack_aligment )
+	if ( 1 != pack_aligment )
 	{
-		glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
+		glPixelStorei(GL_PACK_ALIGNMENT, pack_aligment);
 	}
 
 	/*	invert the image	*/
