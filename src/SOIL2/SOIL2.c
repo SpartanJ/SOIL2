@@ -207,6 +207,7 @@ static int isAtLeastGL3()
 #endif
 
 #ifdef SOIL_PLATFORM_WIN32
+static HMODULE openglModule = NULL;
 static int soilTestWinProcPointer(const PROC pTest)
 {
 	ptrdiff_t iTest;
@@ -230,10 +231,15 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 		func = NULL;
 	#endif
 #elif defined( SOIL_PLATFORM_WIN32 )
+	if ( NULL == openglModule )
+		openglModule = LoadLibraryA("opengl32.dll");
+
 	func =  wglGetProcAddress( proc );
 
-	if (!soilTestWinProcPointer((const PROC)func))
-		func = NULL;
+	if (!soilTestWinProcPointer((const PROC)func)) {
+		func = (void *)GetProcAddress(openglModule, proc);
+	}
+
 #elif defined( SOIL_PLATFORM_OSX )
 	/*	I can't test this Apple stuff!	*/
 	CFBundleRef bundle;
