@@ -218,6 +218,27 @@ static int soilTestWinProcPointer(const PROC pTest)
 }
 #endif
 
+#if defined(__sgi) || defined (__sun) || defined(__HAIKU__)
+#include <dlfcn.h>
+
+void* dlGetProcAddress (const char* name)
+{
+  static void* h = NULL;
+  static void* gpa;
+
+  if (h == NULL)
+  {
+	if ((h = dlopen(NULL, RTLD_LAZY | RTLD_LOCAL)) == NULL) return NULL;
+	gpa = dlsym(h, "glXGetProcAddress");
+  }
+
+  if (gpa != NULL)
+	return ((void*(*)(const GLubyte*))gpa)((const GLubyte*)name);
+  else
+	return dlsym(h, (const char*)name);
+}
+#endif
+
 void * SOIL_GL_GetProcAddress(const char *proc)
 {
 	void *func = NULL;
@@ -270,6 +291,8 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 	glXGetProcAddress
 #endif
 	( (const GLubyte *)proc );
+#elif defined(__sgi) || defined (__sun) || defined(__HAIKU__)
+	func = dlGetProcAddress(proc);
 #endif
 
 	return func;
