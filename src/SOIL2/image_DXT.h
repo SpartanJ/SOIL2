@@ -102,6 +102,7 @@ DDS_header ;
 #define DDPF_ALPHAPIXELS	0x00000001
 #define DDPF_FOURCC	0x00000004
 #define DDPF_RGB	0x00000040
+#define DDPF_LUMINANCE 0x20000
 
 /*	The dwCaps1 member of the DDSCAPS2 structure can be
 	set to one or more of the following values.	*/

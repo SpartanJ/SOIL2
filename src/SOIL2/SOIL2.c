@@ -2035,6 +2035,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	unsigned int flag;
 	unsigned int cf_target, ogl_target_start, ogl_target_end;
 	unsigned int opengl_texture_type;
+	unsigned int format_type = GL_UNSIGNED_BYTE;
 	int i;
 	/*	1st off, does the filename even exist?	*/
 	if( NULL == buffer )
@@ -2066,7 +2067,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		uncompressed.  Some DDS writers do not conform to the
 		spec, so I need to make my reader more tolerant	*/
 	/*	I need one of these	*/
-	flag = DDPF_FOURCC | DDPF_RGB;
+	flag = DDPF_FOURCC | DDPF_RGB | DDPF_LUMINANCE;
 	if( (header.sPixelFormat.dwFlags & flag) == 0 ) {goto quick_exit;}
 	if( header.sPixelFormat.dwSize != 32 ) {goto quick_exit;}
 	if( (header.sCaps.dwCaps1 & DDSCAPS_TEXTURE) == 0 ) {goto quick_exit;}
@@ -2088,12 +2089,61 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	cubemap = (header.sCaps.dwCaps2 & DDSCAPS2_CUBEMAP) / DDSCAPS2_CUBEMAP;
 	if( uncompressed )
 	{
-		S3TC_type = GL_RGB;
-		block_size = 3;
-		if( header.sPixelFormat.dwFlags & DDPF_ALPHAPIXELS )
+		if ( header.sPixelFormat.dwRGBBitCount == 8 )
 		{
-			S3TC_type = GL_RGBA;
-			block_size = 4;
+			if ( (header.sPixelFormat.dwRBitMask == 0xe0) &&
+				 (header.sPixelFormat.dwGBitMask == 0x1c) &&
+				 (header.sPixelFormat.dwBBitMask == 0x3))
+			{
+				S3TC_type = GL_RGB;
+				format_type = GL_UNSIGNED_BYTE_3_3_2;
+				block_size = 1;
+			} else
+			{
+				S3TC_type = GL_LUMINANCE;
+				block_size = 1;
+			}
+		} else if ( header.sPixelFormat.dwRGBBitCount == 16 )
+		{
+			if ( (header.sPixelFormat.dwRBitMask == 0xf800) &&
+				 (header.sPixelFormat.dwGBitMask == 0x7e0) &&
+				 (header.sPixelFormat.dwBBitMask == 0x1f))
+			{
+				//DXGI_FORMAT_B5G6R5_UNORM
+				S3TC_type = GL_RGBA;
+				format_type = GL_UNSIGNED_SHORT_5_5_5_1;
+				block_size = 2;
+			} else if ( (header.sPixelFormat.dwRBitMask == 0xf00) &&
+				 (header.sPixelFormat.dwGBitMask == 0xf0) &&
+				 (header.sPixelFormat.dwBBitMask == 0xf) &&
+				 (header.sPixelFormat.dwAlphaBitMask == 0xf000))
+			{
+				//D3DFMT_A4R4G4B4
+				S3TC_type = GL_RGBA;
+				format_type = GL_UNSIGNED_SHORT_4_4_4_4;
+				block_size = 2;
+			} else if ( (header.sPixelFormat.dwRBitMask == 0x7c00) &&
+				 (header.sPixelFormat.dwGBitMask == 0x3e0) &&
+				 (header.sPixelFormat.dwBBitMask == 0x1f))
+			{
+				//DXGI_FORMAT_B5G5R5A1_UNORM
+				S3TC_type = GL_RGBA;
+				format_type = GL_UNSIGNED_SHORT_5_5_5_1;
+				block_size = 2;
+			} else
+			{
+				S3TC_type = GL_RG;
+				block_size = 2;
+			}
+		} else
+		{
+			S3TC_type = GL_RGB;
+			block_size = 3;
+			if( header.sPixelFormat.dwFlags & DDPF_ALPHAPIXELS )
+			{
+				S3TC_type = GL_RGBA;
+				block_size = 4;
+			}
 		}
 		DDS_main_size = width * height * block_size;
 	} else
@@ -2207,18 +2257,54 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			/*	upload the main chunk	*/
 			if( uncompressed )
 			{
-				/*	and remember, DXT uncompressed uses BGR(A),
-					so swap to RGB(A) for ALL MIPmap levels	*/
-				for( i = 0; i < (int)DDS_full_size; i += block_size )
+				if ( (header.sPixelFormat.dwRBitMask == 0xff0000) && ( ( block_size == 3 && S3TC_type == GL_RGB ) || ( block_size == 4 && S3TC_type == GL_RGBA ) ) )
 				{
-					unsigned char temp = DDS_data[i];
-					DDS_data[i] = DDS_data[i+2];
-					DDS_data[i+2] = temp;
+					for( i = 0; i < (int)DDS_full_size; i += block_size )
+					{
+						unsigned char temp = DDS_data[i];
+						DDS_data[i] = DDS_data[i+2];
+						DDS_data[i+2] = temp;
+					}
+				} else if ( block_size == 2 &&
+							(header.sPixelFormat.dwRBitMask == 0xf800 || header.sPixelFormat.dwRBitMask == 0x7c00) )
+				{
+					// convert to R5G5B5A1
+					for( i = 0; i < (int)DDS_full_size; i += block_size )
+					{
+						unsigned short pixel = DDS_data[i] << 0 | DDS_data[i+1] << 8;
+						char r = ((pixel & header.sPixelFormat.dwRBitMask) >> 10);
+						char g = ((pixel & header.sPixelFormat.dwGBitMask) >> 5);
+						char b = ((pixel & header.sPixelFormat.dwBBitMask) >> 0);
+						char a = 1;
+						if ( header.sPixelFormat.dwAlphaBitMask != 0 ) {
+							a = (pixel & header.sPixelFormat.dwAlphaBitMask) >> 15;
+						}
+						unsigned short pixel_new = (r << 11) | (g << 6) | (b << 1) | a;
+						DDS_data[i] = (pixel_new >> 0) & 0xff;
+						DDS_data[i+1] = (pixel_new >> 8) & 0xff;
+					}
+				} else if ( block_size == 2 &&
+							(header.sPixelFormat.dwRBitMask == 0xf00) &&
+							(header.sPixelFormat.dwGBitMask == 0xf0) &&
+							(header.sPixelFormat.dwBBitMask == 0xf) &&
+							(header.sPixelFormat.dwAlphaBitMask == 0xf000))
+				{
+					for( i = 0; i < (int)DDS_full_size; i += block_size )
+					{
+						unsigned short pixel = DDS_data[i] << 0 | DDS_data[i+1] << 8;
+						char r = ((pixel & header.sPixelFormat.dwRBitMask) >> 8);
+						char g = ((pixel & header.sPixelFormat.dwGBitMask) >> 4);
+						char b = ((pixel & header.sPixelFormat.dwBBitMask) >> 0);
+						char a = ((pixel & header.sPixelFormat.dwAlphaBitMask) >> 12);
+						unsigned short pixel_new = (r << 12) | (g << 8) | (b << 4) | a;
+						DDS_data[i] = (pixel_new >> 0) & 0xff;
+						DDS_data[i+1] = (pixel_new >> 8) & 0xff;
+					}
 				}
 				glTexImage2D(
 					cf_target, 0,
 					S3TC_type, width, height, 0,
-					S3TC_type, GL_UNSIGNED_BYTE, DDS_data );
+					S3TC_type, format_type, DDS_data );
 			} else
 			{
 				soilGlCompressedTexImage2D(
@@ -2247,7 +2333,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 					glTexImage2D(
 						cf_target, i,
 						S3TC_type, w, h, 0,
-						S3TC_type, GL_UNSIGNED_BYTE, &DDS_data[byte_offset] );
+						S3TC_type, format_type, &DDS_data[byte_offset] );
 				} else
 				{
 					mip_size = ((w+3)/4)*((h+3)/4)*block_size;
