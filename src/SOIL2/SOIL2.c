@@ -72,16 +72,6 @@
 	#include <windows.h>
 	#include <wingdi.h>
 	#include <GL/gl.h>
-	
-	#ifndef GL_UNSIGNED_SHORT_4_4_4_4
-	#define GL_UNSIGNED_SHORT_4_4_4_4 0x8033
-	#endif
-	#ifndef GL_UNSIGNED_SHORT_5_5_5_1
-	#define GL_UNSIGNED_SHORT_5_5_5_1 0x8034
-	#endif
-	#ifndef GL_UNSIGNED_SHORT_5_6_5
-	#define GL_UNSIGNED_SHORT_5_6_5 0x8363
-	#endif
 #elif defined(__APPLE__) || defined(__APPLE_CC__)
 	/*	I can't test this Apple stuff!	*/
 	#include <OpenGL/gl.h>
@@ -97,11 +87,25 @@
 #endif
 
 #ifndef GL_BGRA
-#define GL_BGRA                                             0x80E1
+#define GL_BGRA 0x80E1
 #endif
 
 #ifndef GL_RG
-#define GL_RG                             0x8227
+#define GL_RG 0x8227
+#endif
+
+#ifndef GL_UNSIGNED_SHORT_4_4_4_4
+#define GL_UNSIGNED_SHORT_4_4_4_4 0x8033
+#endif
+#ifndef GL_UNSIGNED_SHORT_5_5_5_1
+#define GL_UNSIGNED_SHORT_5_5_5_1 0x8034
+#endif
+#ifndef GL_UNSIGNED_SHORT_5_6_5
+#define GL_UNSIGNED_SHORT_5_6_5 0x8363
+#endif
+
+#ifndef GL_UNSIGNED_BYTE_3_3_2
+#define GL_UNSIGNED_BYTE_3_3_2 0x8032
 #endif
 
 #include "SOIL2.h"
