@@ -1,0 +1,10 @@
+bin/soil2/
+bin/soil2-*
+obj/
+make/
+lib/
+bin/dds/
+projects/
+*.DS_Store
+bin/SDL2.dll
+*.dll
