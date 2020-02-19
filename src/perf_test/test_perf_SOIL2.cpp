@@ -8,7 +8,7 @@
 #include "../SOIL2/SOIL2.h"
 
 #define NO_SDL_GLEXT
-#if ( defined( _MSCVER ) || defined( _MSC_VER ) ) || defined( __APPLE_CC__ ) || defined ( __APPLE__ )
+#if ( ( defined( _MSCVER ) || defined( _MSC_VER ) ) || defined( __APPLE_CC__ ) || defined ( __APPLE__ ) ) && !defined( SOIL2_NO_FRAMEWORKS )
 	#include <SDL.h>
 	#include <SDL_opengl.h>
 #else

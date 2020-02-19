@@ -99,6 +99,9 @@ workspace "SOIL2"
 			optimize "On"
 			targetname "soil2"
 
+		filter "system:macosx"
+			defines { "GL_SILENCE_DEPRECATION" }
+
 	project "soil2-shared-lib"
 		kind "SharedLib"
 
@@ -123,6 +126,7 @@ workspace "SOIL2"
 			links { "OpenGL.framework", "CoreFoundation.framework" }
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
+			defines { "GL_SILENCE_DEPRECATION" }
 
 		filter "system:haiku"
 			links {"GL"}
@@ -164,6 +168,10 @@ workspace "SOIL2"
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
+			defines { "GL_SILENCE_DEPRECATION" }
+			if not _OPTIONS["use-frameworks"] then
+				defines { "SOIL2_NO_FRAMEWORKS" }
+			end
 
 		filter "system:haiku"
 			links {"GL","SDL2"}
@@ -208,6 +216,10 @@ workspace "SOIL2"
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
+			defines { "GL_SILENCE_DEPRECATION" }
+			if not _OPTIONS["use-frameworks"] then
+				defines { "SOIL2_NO_FRAMEWORKS" }
+			end
 
 		filter "system:haiku"
 			links {"GL","SDL2"}
