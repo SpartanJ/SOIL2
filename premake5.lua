@@ -1,4 +1,5 @@
 newoption { trigger = "use-frameworks", description = "In macOS it will try to link the external libraries from its frameworks. For example, instead of linking against SDL2 it will link against SDL2.framework." }
+newoption { trigger = "windows-vc-build", description = "This is used to build the framework in Visual Studio downloading its external dependencies and making them available to the VS project without having to install them manually." }
 
 function string.starts(String,Start)
 	if ( _ACTION ) then
@@ -8,12 +9,15 @@ function string.starts(String,Start)
 	return false
 end
 
-function is_vs()
-	return ( string.starts(_ACTION,"vs") )
-end
-
 function is_xcode()
 	return ( string.starts(_ACTION,"xcode") )
+end
+
+function incdirs( dirs )
+	if is_xcode() then
+		sysincludedirs { dirs }
+	end
+	includedirs { dirs }
 end
 
 function os_findlib( name )
@@ -40,35 +44,57 @@ function get_backend_link_name( name )
 	return name
 end
 
+remote_sdl2_version = "SDL2-2.0.10"
+remote_sdl2_devel_vc_url = "https://www.libsdl.org/release/SDL2-devel-2.0.10-VC.zip"
+
+function download_and_extract_dependencies()
+	if _OPTIONS["windows-vc-build"] and not os.isdir("./" .. remote_sdl2_version) then
+		print("Downloading: " .. remote_sdl2_devel_vc_url)
+		local dest_dir = "./"
+		local local_file = dest_dir .. remote_sdl2_version .. ".zip"
+		local result_str, response_code = http.download(remote_sdl2_devel_vc_url, local_file)
+		if response_code == 200 then
+			print("Downloaded successfully to: " .. local_file)
+			zip.extract(local_file, dest_dir)
+			print("Extracted " .. local_file .. " into " .. dest_dir)
+			ok = os.copyfile(dest_dir .. remote_sdl2_version .. "/lib/x86/SDL2.dll", "./bin/SDL2.dll")
+			if not ok then
+				print("Failed to copy SDL2.dll.")
+			end
+		else
+			print("Failed to download:  " .. remote_sdl2_rul)
+			exit(1)
+		end
+	end
+end
+
 workspace "SOIL2"
 	location("./make/" .. os.target() .. "/")
 	targetdir("./bin")
 	configurations { "debug", "release" }
+	download_and_extract_dependencies()
 	objdir("obj/" .. os.target() .. "/")
 
 	project "soil2-static-lib"
 		kind "StaticLib"
-
-		if is_vs() then
-			language "C++"
-			buildoptions { "/TP" }
-			defines { "_CRT_SECURE_NO_WARNINGS" }
-		else
-			language "C"
-		end
-
 		targetdir("lib/" .. os.target() .. "/")
 		files { "src/SOIL2/*.c" }
 
-		configuration "debug"
+		filter "action:vs*"
+			language "C++"
+			buildoptions { "/TP" }
+			defines { "_CRT_SECURE_NO_WARNINGS" }
+
+		filter "action:not vs*"
+			language "C"
+			buildoptions { "-Wall" }
+
+		filter "configurations:debug"
 			defines { "DEBUG" }
 			symbols "On"
-			if not is_vs() then
-				buildoptions{ "-Wall" }
-			end
 			targetname "soil2-debug"
 
-		configuration "release"
+		filter "configurations:release"
 			defines { "NDEBUG" }
 			optimize "On"
 			targetname "soil2"
@@ -76,51 +102,44 @@ workspace "SOIL2"
 	project "soil2-shared-lib"
 		kind "SharedLib"
 
-		if is_vs() then
-			language "C++"
-			buildoptions { "/TP" }
-			defines { "_CRT_SECURE_NO_WARNINGS" }
-		else
-			language "C"
-		end
-
 		targetdir("lib/" .. os.target() .. "/")
 		files { "src/SOIL2/*.c" }
 
-		if os.istarget("windows") and not is_vs() then
+		filter "action:vs*"
+			language "C++"
+			buildoptions { "/TP" }
+			defines { "_CRT_SECURE_NO_WARNINGS" }
+
+		filter { "system:windows", "action:not vs*" }
 			links { "mingw32" }
-		end
 
-		configuration "mingw32"
-			links { "mingw32" }
+		filter "system:windows"
+			links {"opengl32"}
 
-		configuration "windows"
-			links {"opengl32","SDL2"}
+		filter "system:linux"
+			links {"GL"}
 
-		configuration "linux"
-			links {"GL","SDL2"}
-
-		configuration "macosx"
-			links { "OpenGL.framework", "CoreFoundation.framework", get_backend_link_name("SDL2") }
+		filter "system:macosx"
+			links { "OpenGL.framework", "CoreFoundation.framework" }
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
-			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
 
-		configuration "haiku"
-			links {"GL","SDL2"}
+		filter "system:haiku"
+			links {"GL"}
 
-		configuration "freebsd"
-			links {"GL","SDL2"}
+		filter "system:bsd"
+			links {"GL"}
 
-		configuration "debug"
+		filter "action:not vs*"
+			language "C"
+			buildoptions { "-Wall" }
+
+		filter "configurations:debug"
 			defines { "DEBUG" }
 			symbols "On"
-			if not is_vs() then
-				buildoptions{ "-Wall" }
-			end
 			targetname "soil2-debug"
 
-		configuration "release"
+		filter "configurations:release"
 			defines { "NDEBUG" }
 			optimize "On"
 			targetname "soil2"
@@ -131,43 +150,43 @@ workspace "SOIL2"
 		links { "soil2-static-lib" }
 		files { "src/test/*.cpp", "src/common/*.cpp" }
 
-		if os.istarget("windows") and not is_vs() then
-			links { "mingw32" }
-		end
-
-		configuration "mingw32"
+		filter { "system:windows", "action:not vs*" }
 			links { "mingw32" }
 
-		configuration "windows"
+		filter "system:windows"
 			links {"opengl32","SDL2main","SDL2"}
 
-		configuration "linux"
+		filter "system:linux"
 			links {"GL","SDL2"}
 
-		configuration "macosx"
+		filter "system:macosx"
 			links { "OpenGL.framework", "CoreFoundation.framework", get_backend_link_name("SDL2") }
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
 
-		configuration "haiku"
+		filter "system:haiku"
 			links {"GL","SDL2"}
 
-		configuration "freebsd"
+		filter "system:bsd"
 			links {"GL","SDL2"}
 
-		configuration "debug"
+		filter "action:not vs*"
+			buildoptions { "-Wall" }
+
+		filter "configurations:debug"
 			defines { "DEBUG" }
 			symbols "On"
-			if not is_vs() then
-				buildoptions{ "-Wall" }
-			end
 			targetname "soil2-test-debug"
 
-		configuration "release"
+		filter "configurations:release"
 			defines { "NDEBUG" }
 			optimize "On"
 			targetname "soil2-test-release"
+
+		filter { "options:windows-vc-build", "system:windows" }
+			syslibdirs { "./" .. remote_sdl2_version .."/lib/x86" }
+			incdirs { "./" .. remote_sdl2_version .. "/include" }
 
 	project "soil2-perf-test"
 		kind "ConsoleApp"
@@ -175,40 +194,40 @@ workspace "SOIL2"
 		links { "soil2-static-lib" }
 		files { "src/perf_test/*.cpp", "src/common/*.cpp" }
 
-		if os.istarget("windows") and not is_vs() then
-			links { "mingw32" }
-		end
-
-		configuration "mingw32"
+		filter { "system:windows", "action:not vs*" }
 			links { "mingw32" }
 
-		configuration "windows"
+		filter "system:windows"
 			links {"opengl32","SDL2main","SDL2"}
 
-		configuration "linux"
+		filter "system:linux"
 			links {"GL","SDL2"}
 
-		configuration "macosx"
+		filter "system:macosx"
 			links { "OpenGL.framework", "CoreFoundation.framework", get_backend_link_name("SDL2") }
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
 
-		configuration "haiku"
+		filter "system:haiku"
 			links {"GL","SDL2"}
 
-		configuration "freebsd"
+		filter "system:bsd"
 			links {"GL","SDL2"}
 
-		configuration "debug"
+		filter "action:not vs*"
+			buildoptions { "-Wall" }
+
+		filter "configurations:debug"
 			defines { "DEBUG" }
 			symbols "On"
-			if not is_vs() then
-				buildoptions{ "-Wall" }
-			end
 			targetname "soil2-perf-test-debug"
 
-		configuration "release"
+		filter "configurations:release"
 			defines { "NDEBUG" }
 			optimize "On"
 			targetname "soil2-perf-test-release"
+
+		filter { "options:windows-vc-build", "system:windows" }
+			syslibdirs { "./" .. remote_sdl2_version .."/lib/x86" }
+			incdirs { "./" .. remote_sdl2_version .. "/include" }

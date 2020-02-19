@@ -3,6 +3,7 @@
 #include <cmath>
 #include <climits>
 #include <limits>
+#include <vector>
 
 #if defined( __APPLE_CC__ ) || defined ( __APPLE__ )
 	#define PLATFORM_OSX
@@ -10,6 +11,19 @@
 #elif defined( __WIN32__ ) || defined( _WIN32 ) || defined( _WIN64 )
 	#define PLATFORM_WIN32
 	#include <windows.h>
+
+#if defined(_MSC_VER) && defined( UNICODE )
+static std::string wcharToString(TCHAR* text) {
+	std::vector<char> buffer;
+	int size = WideCharToMultiByte(CP_UTF8, 0, text, -1, NULL, 0, NULL, NULL);
+	if (size > 0) {
+		buffer.resize(size);
+		WideCharToMultiByte(CP_UTF8, 0, text, -1, reinterpret_cast<LPSTR>(&buffer[0]), buffer.size(), NULL, NULL);
+	}
+	return std::string(&buffer[0]);
+}
+#endif
+
 #elif defined ( linux ) || defined( __linux__ )
 	#define PLATFORM_LINUX
 	#include <libgen.h>
@@ -58,6 +72,7 @@ static std::string GetProcessPath() {
 		return std::string(dirname(exe_file)) + "/";
 	}
 #elif defined( PLATFORM_WIN32 )
+	#ifdef UNICODE
 	// Get path to executable:
 	TCHAR szDllName[_MAX_PATH];
 	TCHAR szDrive[_MAX_DRIVE];
@@ -66,9 +81,28 @@ static std::string GetProcessPath() {
 	TCHAR szExt[_MAX_DIR];
 	GetModuleFileName(0, szDllName, _MAX_PATH);
 
+	#if ( defined( _MSCVER ) || defined( _MSC_VER ) )
+	_wsplitpath_s(szDllName, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFilename, _MAX_DIR, szExt, _MAX_DIR);
+	#else
 	_splitpath(szDllName, szDrive, szDir, szFilename, szExt);
+	#endif
 
+	return wcharToString(szDrive) + wcharToString(szDir);
+	#else
+	// Get path to executable:
+	TCHAR szDllName[_MAX_PATH];
+	TCHAR szDrive[_MAX_DRIVE];
+	TCHAR szDir[_MAX_DIR];
+	TCHAR szFilename[_MAX_DIR];
+	TCHAR szExt[_MAX_DIR];
+	GetModuleFileName(0, szDllName, _MAX_PATH);
+	#if ( defined( _MSCVER ) || defined( _MSC_VER ) )
+	_splitpath_s(szDllName, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFilename, _MAX_DIR, szExt, _MAX_DIR);
+	#else
+	_splitpath(szDllName, szDrive, szDir, szFilename, szExt);
+	#endif
 	return std::string(szDrive) + std::string(szDir);
+	#endif
 #elif defined( PLATFORM_BSD )
 	int mib[4];
 	mib[0] = CTL_KERN;

@@ -147,22 +147,21 @@ solution "SOIL2"
 			links { "mingw32" }
 
 		configuration "windows"
-			links {"opengl32","SDL2"}
+			links {"opengl32"}
 
 		configuration "linux"
-			links {"GL","SDL2"}
+			links {"GL"}
 
 		configuration "macosx"
-			links { "OpenGL.framework", "CoreFoundation.framework", get_backend_link_name("SDL2") }
+			links { "OpenGL.framework", "CoreFoundation.framework" }
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
-			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
 
 		configuration "haiku"
-			links {"GL","SDL2"}
+			links {"GL"}
 
 		configuration "freebsd"
-			links {"GL","SDL2"}
+			links {"GL"}
 
 		configuration "debug"
 			defines { "DEBUG" }
