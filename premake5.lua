@@ -87,6 +87,10 @@ workspace "SOIL2"
 		targetdir("lib/" .. os.target() .. "/")
 		files { "src/SOIL2/*.c" }
 
+		filter "action:vs*"
+			buildoptions { "/TP" }
+			defines { "_CRT_SECURE_NO_WARNINGS" }
+
 		filter "action:not vs*"
 			language "C"
 			buildoptions { "-Wall" }
@@ -109,6 +113,10 @@ workspace "SOIL2"
 
 		targetdir("lib/" .. os.target() .. "/")
 		files { "src/SOIL2/*.c" }
+
+		filter "action:vs*"
+			buildoptions { "/TP" }
+			defines { "_CRT_SECURE_NO_WARNINGS" }
 
 		filter { "system:windows", "action:not vs*" }
 			links { "mingw32" }

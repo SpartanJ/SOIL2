@@ -100,14 +100,13 @@ solution "SOIL2"
 
 	project "soil2-static-lib"
 		kind "StaticLib"
+		language "C"
 
 		if is_vs() then
-			language "C++"
 			buildoptions { "/TP" }
 			defines { "_CRT_SECURE_NO_WARNINGS" }
-		else
-			language "C"
 		end
+
 
 		targetdir("lib/" .. os.get() .. "/")
 		files { "src/SOIL2/*.c" }
@@ -127,13 +126,11 @@ solution "SOIL2"
 
 	project "soil2-shared-lib"
 		kind "SharedLib"
+		language "C"
 
 		if is_vs() then
-			language "C++"
 			buildoptions { "/TP" }
 			defines { "_CRT_SECURE_NO_WARNINGS" }
-		else
-			language "C"
 		end
 
 		targetdir("lib/" .. os.get() .. "/")
