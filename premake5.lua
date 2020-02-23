@@ -120,6 +120,8 @@ workspace "SOIL2"
 
 		filter { "system:windows", "action:not vs*" }
 			links { "mingw32" }
+			vectorextensions "SSE2"
+			defines { "STBI_MINGW_ENABLE_SSE2" }
 
 		filter "system:windows"
 			links {"opengl32"}
@@ -186,6 +188,8 @@ workspace "SOIL2"
 
 		filter "action:not vs*"
 			buildoptions { "-Wall" }
+			vectorextensions "SSE2"
+			defines { "STBI_MINGW_ENABLE_SSE2" }
 
 		filter "configurations:debug"
 			defines { "DEBUG" }
@@ -214,6 +218,8 @@ workspace "SOIL2"
 
 		filter { "system:windows", "action:not vs*" }
 			links { "mingw32" }
+			vectorextensions "SSE2"
+			defines { "STBI_MINGW_ENABLE_SSE2" }
 
 		filter "system:windows"
 			links {"opengl32","SDL2main","SDL2"}

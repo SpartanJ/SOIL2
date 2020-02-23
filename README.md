@@ -6,19 +6,19 @@ Simple OpenGL Image Library 2 ![SOIL2](https://web.ensoft.dev/soil2/soil2-logo.s
 **Introduction:**
 --------------
 
-**SOIL2** is a fork of the Jonathan Dummer's [Simple OpenGL Image Library](http://www.lonesock.net/soil.html). 
+**SOIL2** is a fork of the Jonathan Dummer's [Simple OpenGL Image Library](http://www.lonesock.net/soil.html).
 
 **SOIL2** is a tiny C library used primarily for uploading textures into OpenGL.
 It is based on [stb_image](http://www.nothings.org/stb_image.c), the public domain code from Sean Barrett.
 
-**SOIL2** extended stb_image to DDS files, and to perform common functions needed in loading OpenGL textures. 
+**SOIL2** extended stb_image to DDS files, and to perform common functions needed in loading OpenGL textures.
 
 **SOIL2** can also be used to save and load images in a variety of formats (useful for loading height maps, non-OpenGL applications, etc.)
 
 **License:**
 --------------
 
-Public Domain
+MIT-0 (see LICENSE file)
 
 **Features:**
 -------------
@@ -32,7 +32,7 @@ Public Domain
     * PSD - (from stb_image documentation)
     * HDR - converted to LDR, unless loaded with *HDR* functions (RGBE or RGBdivA or RGBdivA2)
     * GIF
-    * PIC 
+    * PIC
     * PKM ( ETC1 )
     * PVR ( PVRTC )
 
@@ -107,7 +107,7 @@ Then you can generate the static library for your platform just going to the pro
 
 `premake4 gmake` to generate project Makefiles, then `cd make/*YOURPLATFORM*/`, and finally `make` or `make config=release` ( it will generate the static lib, the shared lib and the test application ).
 
-or 
+or
 
 `premake4 vs2010` to generate Visual Studio 2010 project.
 
@@ -116,7 +116,7 @@ or
 `premake4 xcode4` to generate Xcode 4 project.
 
 The static library will be located in `lib/*YOURPLATFORM*/` folder project subdirectory.
-The test will be located in `bin`, you need [SDL 2](http://libsdl.org/) installed to be able to build the test.
+The test will be located in `bin`, you need [SDL2](http://libsdl.org/) installed to be able to build the test.
 
 **Usage:**
 ----------
@@ -136,7 +136,7 @@ GLuint tex_2d = SOIL_load_OGL_texture
 		SOIL_CREATE_NEW_ID,
 		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
 	);
-	
+
 /* check for an error during the load process */
 if( 0 == tex_2d )
 {
@@ -151,7 +151,7 @@ tex_2d = SOIL_load_OGL_texture
 		tex_2d,
 		SOIL_FLAG_DDS_LOAD_DIRECT
 	);
-	
+
 /* load 6 images into a new OpenGL cube map, forcing RGB */
 GLuint tex_cube = SOIL_load_OGL_cubemap
 	(
@@ -165,7 +165,7 @@ GLuint tex_cube = SOIL_load_OGL_cubemap
 		SOIL_CREATE_NEW_ID,
 		SOIL_FLAG_MIPMAPS
 	);
-	
+
 /* load and split a single image into a new OpenGL cube map, default format */
 /* face order = East South West North Up Down => "ESWNUD", case sensitive! */
 GLuint single_tex_cube = SOIL_load_OGL_single_cubemap
@@ -176,7 +176,7 @@ GLuint single_tex_cube = SOIL_load_OGL_single_cubemap
 		SOIL_CREATE_NEW_ID,
 		SOIL_FLAG_MIPMAPS
 	);
-	
+
 /* actually, load a DDS cubemap over the last OpenGL cube map, default format */
 /* try to load it directly, but give the order of the faces in case that fails */
 /* the DDS cubemap face order is pre-defined as SOIL_DDS_CUBEMAP_FACE_ORDER */
@@ -188,7 +188,7 @@ single_tex_cube = SOIL_load_OGL_single_cubemap
 		single_tex_cube,
 		SOIL_FLAG_MIPMAPS | SOIL_FLAG_DDS_LOAD_DIRECT
 	);
-	
+
 /* load an image as a heightmap, forcing greyscale (so channels should be 1) */
 int width, height, channels;
 unsigned char *ht_map = SOIL_load_image
@@ -197,7 +197,7 @@ unsigned char *ht_map = SOIL_load_image
 		&width, &height, &channels,
 		SOIL_LOAD_L
 	);
-	
+
 /* save that image as another type */
 int save_result = SOIL_save_image
 	(
@@ -206,7 +206,7 @@ int save_result = SOIL_save_image
 		width, height, channels,
 		ht_map
 	);
-	
+
 /* save a screenshot of your awesome OpenGL game engine, running at 1024x768 */
 save_result = SOIL_save_screenshot
 	(
@@ -225,14 +225,12 @@ GLuint tex_2d_from_RAM = SOIL_load_OGL_texture_from_memory
 		SOIL_CREATE_NEW_ID,
 		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT
 	);
-	
+
 /* done with the heightmap, free up the RAM */
 SOIL_free_image_data( ht_map );
 ```
 
 **Clarifications**
 ----------------
-
-Visual Studio users: SOIL2 will need to be compiled as C++ source ( at least the file etc1_utils.c ), since VC compiler doesn't support C99. Users using the premake file provided by the project don't need to do anything, since the premake file already handles this issue.
 
 The icon used for the project is part of the [Haiku®'s Icons](http://www.haiku-inc.org/haiku-icons.html), [MIT licensed](http://www.opensource.org/licenses/mit-license.html).

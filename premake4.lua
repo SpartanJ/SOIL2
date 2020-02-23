@@ -140,6 +140,8 @@ solution "SOIL2"
 		end
 
 		configuration "mingw32"
+			flags { "EnableSSE", "EnableSSE2" }
+			defines { "STBI_MINGW_ENABLE_SSE2" }
 			links { "mingw32" }
 
 		configuration "windows"
@@ -183,6 +185,8 @@ solution "SOIL2"
 		end
 
 		configuration "mingw32"
+			flags { "EnableSSE", "EnableSSE2" }
+			defines { "STBI_MINGW_ENABLE_SSE2" }
 			links { "mingw32" }
 
 		configuration "windows"
@@ -227,6 +231,8 @@ solution "SOIL2"
 		end
 
 		configuration "mingw32"
+			flags { "EnableSSE", "EnableSSE2" }
+			defines { "STBI_MINGW_ENABLE_SSE2" }
 			links { "mingw32" }
 
 		configuration "windows"
