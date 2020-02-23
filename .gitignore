@@ -8,3 +8,4 @@ projects/
 *.DS_Store
 bin/SDL2.dll
 *.dll
+SDL2-2.0.10*

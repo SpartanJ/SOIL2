@@ -199,8 +199,13 @@ workspace "SOIL2"
 			optimize "On"
 			targetname "soil2-test-release"
 
-		filter { "options:windows-vc-build", "system:windows" }
+		filter { "options:windows-vc-build", "system:windows", "platforms:x86" }
 			syslibdirs { "./" .. remote_sdl2_version .."/lib/x86" }
+
+		filter { "options:windows-vc-build", "system:windows", "platforms:x86_64" }
+			syslibdirs { "./" .. remote_sdl2_version .."/lib/x64" }
+
+		filter { "options:windows-vc-build", "system:windows" }
 			incdirs { "./" .. remote_sdl2_version .. "/include" }
 
 	project "soil2-perf-test"
@@ -247,6 +252,11 @@ workspace "SOIL2"
 			optimize "On"
 			targetname "soil2-perf-test-release"
 
-		filter { "options:windows-vc-build", "system:windows" }
+		filter { "options:windows-vc-build", "system:windows", "platforms:x86" }
 			syslibdirs { "./" .. remote_sdl2_version .."/lib/x86" }
+
+		filter { "options:windows-vc-build", "system:windows", "platforms:x86_64" }
+			syslibdirs { "./" .. remote_sdl2_version .."/lib/x64" }
+
+		filter { "options:windows-vc-build", "system:windows" }
 			incdirs { "./" .. remote_sdl2_version .. "/include" }
