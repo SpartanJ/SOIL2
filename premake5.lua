@@ -88,7 +88,6 @@ workspace "SOIL2"
 		files { "src/SOIL2/*.c" }
 
 		filter "action:vs*"
-			language "C++"
 			buildoptions { "/TP" }
 			defines { "_CRT_SECURE_NO_WARNINGS" }
 
@@ -116,7 +115,6 @@ workspace "SOIL2"
 		files { "src/SOIL2/*.c" }
 
 		filter "action:vs*"
-			language "C++"
 			buildoptions { "/TP" }
 			defines { "_CRT_SECURE_NO_WARNINGS" }
 
