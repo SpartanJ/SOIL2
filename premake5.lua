@@ -72,7 +72,7 @@ workspace "SOIL2"
 	location("./make/" .. os.target() .. "/")
 	targetdir("./bin")
 	configurations { "debug", "release" }
-	platforms { "x86", "x86_64" }
+	platforms { "x86_64", "x86" }
 	download_and_extract_dependencies()
 	objdir("obj/" .. os.target() .. "/")
 
