@@ -107,7 +107,6 @@ solution "SOIL2"
 			defines { "_CRT_SECURE_NO_WARNINGS" }
 		end
 
-
 		targetdir("lib/" .. os.get() .. "/")
 		files { "src/SOIL2/*.c" }
 
