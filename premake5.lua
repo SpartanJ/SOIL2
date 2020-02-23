@@ -72,8 +72,15 @@ workspace "SOIL2"
 	location("./make/" .. os.target() .. "/")
 	targetdir("./bin")
 	configurations { "debug", "release" }
+	platforms { "x86_64", "x86" }
 	download_and_extract_dependencies()
 	objdir("obj/" .. os.target() .. "/")
+
+	filter "platforms:x86"
+		architecture "x86"
+
+	filter "platforms:x86_64"
+		architecture "x86_64"
 
 	project "soil2-static-lib"
 		kind "StaticLib"
