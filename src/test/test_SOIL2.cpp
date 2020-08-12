@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <string>
 #include <iostream>
+#include <vector>
 #include "../common/common.hpp"
 #include "../SOIL2/SOIL2.h"
 
@@ -65,10 +66,20 @@ int main( int argc, char* argv[] )
 
 	//	log what the use is asking us to load
 	std::string load_me;
+	bool isCubemap = argc >= 7;
+	std::vector<std::string> sides;
 
 	if ( argc >= 2 )
 	{
 		load_me = std::string( argv[1] );
+
+		if ( isCubemap )
+		{
+			for ( int i = 1; i < 7; i++ )
+			{
+				sides.push_back( std::string( argv[i] ) );
+			}
+		}
 	}
 	else
 	{
@@ -85,17 +96,38 @@ int main( int argc, char* argv[] )
 	std::cout << "Attempting to load as a cubemap" << std::endl;
 	time_me = SDL_GetPerformanceCounter();
 
-	tex_ID = SOIL_load_OGL_single_cubemap(
-			load_me.c_str(),
-			SOIL_DDS_CUBEMAP_FACE_ORDER,
-			SOIL_LOAD_AUTO,
-			SOIL_CREATE_NEW_ID,
-			SOIL_FLAG_POWER_OF_TWO
-			| SOIL_FLAG_MIPMAPS
-			| SOIL_FLAG_DDS_LOAD_DIRECT
-			| SOIL_FLAG_PVR_LOAD_DIRECT
-			| SOIL_FLAG_ETC1_LOAD_DIRECT
-			);
+	if ( isCubemap )
+	{
+		tex_ID = SOIL_load_OGL_cubemap(
+				sides[0].c_str(),
+				sides[1].c_str(),
+				sides[2].c_str(),
+				sides[3].c_str(),
+				sides[4].c_str(),
+				sides[5].c_str(),
+				SOIL_LOAD_AUTO,
+				SOIL_CREATE_NEW_ID,
+				SOIL_FLAG_POWER_OF_TWO
+				| SOIL_FLAG_MIPMAPS
+				| SOIL_FLAG_DDS_LOAD_DIRECT
+				| SOIL_FLAG_PVR_LOAD_DIRECT
+				| SOIL_FLAG_ETC1_LOAD_DIRECT
+				);
+	}
+	else
+	{
+		tex_ID = SOIL_load_OGL_single_cubemap(
+				load_me.c_str(),
+				SOIL_DDS_CUBEMAP_FACE_ORDER,
+				SOIL_LOAD_AUTO,
+				SOIL_CREATE_NEW_ID,
+				SOIL_FLAG_POWER_OF_TWO
+				| SOIL_FLAG_MIPMAPS
+				| SOIL_FLAG_DDS_LOAD_DIRECT
+				| SOIL_FLAG_PVR_LOAD_DIRECT
+				| SOIL_FLAG_ETC1_LOAD_DIRECT
+				);
+	}
 
 	std::cout << "the load time was " << get_total_ms(time_me) << " milliseconds" << std::endl;
 
