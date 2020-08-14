@@ -203,7 +203,8 @@ static int isAtLeastGL3()
 	if ( SOIL_CAPABILITY_UNKNOWN == is_gl3 )
 	{
 		const char * verstr	= (const char *) glGetString( GL_VERSION );
-		is_gl3				= ( verstr && ( atoi(verstr) >= 3 ) );
+		is_gl3				= ( verstr && ( atoi(verstr) >= 3 ) &&
+								strstr( verstr, " ES " ) == NULL );
 	}
 
 	return is_gl3;
@@ -2903,13 +2904,10 @@ int query_NPOT_capability( void )
 	if( has_NPOT_capability == SOIL_CAPABILITY_UNKNOWN )
 	{
 		/*	we haven't yet checked for the capability, do so	*/
-		if(
-			(0 == SOIL_GL_ExtensionSupported(
-				"GL_ARB_texture_non_power_of_two" ) )
-		&&
-			(0 == SOIL_GL_ExtensionSupported(
-				"GL_OES_texture_npot" ) )
-			)
+		if( (0 == SOIL_GL_ExtensionSupported( "GL_ARB_texture_non_power_of_two" ) ) &&
+			(0 == SOIL_GL_ExtensionSupported( "GL_OES_texture_npot" ) ) &&
+			!isAtLeastGL3()
+		  )
 		{
 			/*	not there, flag the failure	*/
 			has_NPOT_capability = SOIL_CAPABILITY_NONE;
@@ -2934,15 +2932,10 @@ int query_tex_rectangle_capability( void )
 	{
 		/*	we haven't yet checked for the capability, do so	*/
 		if(
-			(0 == SOIL_GL_ExtensionSupported(
-				"GL_ARB_texture_rectangle" ) )
-		&&
-			(0 == SOIL_GL_ExtensionSupported(
-				"GL_EXT_texture_rectangle" ) )
-		&&
-			(0 == SOIL_GL_ExtensionSupported(
-				"GL_NV_texture_rectangle" ) )
-			)
+			(0 == SOIL_GL_ExtensionSupported( "GL_ARB_texture_rectangle" ) ) &&
+			(0 == SOIL_GL_ExtensionSupported( "GL_EXT_texture_rectangle" ) ) &&
+			(0 == SOIL_GL_ExtensionSupported( "GL_NV_texture_rectangle" ) ) &&
+			!isAtLeastGL3() )
 		{
 			/*	not there, flag the failure	*/
 			has_tex_rectangle_capability = SOIL_CAPABILITY_NONE;
@@ -2963,12 +2956,10 @@ int query_cubemap_capability( void )
 	{
 		/*	we haven't yet checked for the capability, do so	*/
 		if(
-			(0 == SOIL_GL_ExtensionSupported(
-				"GL_ARB_texture_cube_map" ) )
-		&&
-			(0 == SOIL_GL_ExtensionSupported(
-				"GL_EXT_texture_cube_map" ) )
-			)
+			(0 == SOIL_GL_ExtensionSupported( "GL_ARB_texture_cube_map" ) ) &&
+			(0 == SOIL_GL_ExtensionSupported( "GL_EXT_texture_cube_map" ) ) &&
+			!isAtLeastGL3()
+		  )
 		{
 			/*	not there, flag the failure	*/
 			has_cubemap_capability = SOIL_CAPABILITY_NONE;
@@ -3091,14 +3082,11 @@ int query_sRGB_capability( void )
 {
 	if ( has_sRGB_capability == SOIL_CAPABILITY_UNKNOWN )
 	{
-		if (0 == SOIL_GL_ExtensionSupported(
-				"GL_EXT_texture_sRGB" )
-				&&
-			0 == SOIL_GL_ExtensionSupported(
-				"GL_EXT_sRGB" )
-				&&
-			0 == SOIL_GL_ExtensionSupported(
-				"EXT_sRGB" ) )
+		if (0 == SOIL_GL_ExtensionSupported( "GL_EXT_texture_sRGB" ) &&
+			0 == SOIL_GL_ExtensionSupported( "GL_EXT_sRGB" ) &&
+			0 == SOIL_GL_ExtensionSupported( "EXT_sRGB" ) &&
+			!isAtLeastGL3()
+		   )
 		{
 			has_sRGB_capability = SOIL_CAPABILITY_NONE;
 		} else
@@ -3142,14 +3130,11 @@ int query_gen_mipmap_capability( void )
 
 	if( has_gen_mipmap_capability == SOIL_CAPABILITY_UNKNOWN )
 	{
-		if (	0 == SOIL_GL_ExtensionSupported(
-					"GL_ARB_framebuffer_object" )
-			&&
-				0 == SOIL_GL_ExtensionSupported(
-					"GL_EXT_framebuffer_object" )
-			&&  0 == SOIL_GL_ExtensionSupported(
-					"GL_OES_framebuffer_object" )
-			)
+		if (	0 == SOIL_GL_ExtensionSupported( "GL_ARB_framebuffer_object" ) &&
+				0 == SOIL_GL_ExtensionSupported( "GL_EXT_framebuffer_object" ) &&
+				0 == SOIL_GL_ExtensionSupported( "GL_OES_framebuffer_object" ) &&
+				!isAtLeastGL3()
+		   )
 		{
 			/* not there, flag the failure */
 			has_gen_mipmap_capability = SOIL_CAPABILITY_NONE;
