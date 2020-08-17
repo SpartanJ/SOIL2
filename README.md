@@ -28,7 +28,7 @@ MIT-0 (see LICENSE file)
     * PNG - non-interlaced (from stb_image documentation)
     * JPG - JPEG baseline (from stb_image documentation)
     * TGA - greyscale or RGB or RGBA or indexed, uncompressed or RLE
-    * DDS - DXT1/2/3/4/5, uncompressed, cubemaps (can't read 3D DDS files yet)
+    * DDS - DXT1/2/3/4/5, 3Dc, uncompressed, cubemaps (can't read 3D DDS files yet)
     * PSD - (from stb_image documentation)
     * HDR - converted to LDR, unless loaded with *HDR* functions (RGBE or RGBdivA or RGBdivA2)
     * GIF
