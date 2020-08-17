@@ -192,7 +192,7 @@ int query_ETC1_capability( void );
 #define SOIL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG                     0x8C03
 #define SOIL_GL_ETC1_RGB8_OES                                     0x8D64
 
-#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX )
+#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX ) || defined(__HAIKU__)
 typedef const GLubyte *(APIENTRY * P_SOIL_glGetStringiFunc) (GLenum, GLuint);
 static P_SOIL_glGetStringiFunc soilGlGetStringiFunc = NULL;
 
@@ -208,6 +208,11 @@ static int isAtLeastGL3()
 	}
 
 	return is_gl3;
+}
+#else
+static int isAtLeastGL3()
+{
+	return SOIL_CAPABILITY_NONE;
 }
 #endif
 
@@ -318,7 +323,7 @@ int SOIL_GL_ExtensionSupported(const char *extension)
 		return 0;
 	}
 
-	#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX )
+	#if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX ) || defined(__HAIKU__)
 	/* Lookup the available extensions */
 	if ( isAtLeastGL3() )
 	{
