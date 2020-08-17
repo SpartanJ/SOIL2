@@ -159,12 +159,15 @@ int query_tex_rectangle_capability( void );
 /*	for using DXT compression	*/
 static int has_DXT_capability = SOIL_CAPABILITY_UNKNOWN;
 int query_DXT_capability( void );
+static int has_3Dc_capability = SOIL_CAPABILITY_UNKNOWN;
+int query_3Dc_capability( void );
 #define SOIL_GL_SRGB			0x8C40
 #define SOIL_GL_SRGB_ALPHA		0x8C42
 #define SOIL_RGB_S3TC_DXT1		0x83F0
 #define SOIL_RGBA_S3TC_DXT1		0x83F1
 #define SOIL_RGBA_S3TC_DXT3		0x83F2
 #define SOIL_RGBA_S3TC_DXT5		0x83F3
+#define SOIL_COMPRESSED_RG_RGTC2	0x8DBD
 #define SOIL_GL_COMPRESSED_SRGB_S3TC_DXT1_EXT  0x8C4C
 #define SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
 static int has_sRGB_capability = SOIL_CAPABILITY_UNKNOWN;
@@ -2029,24 +2032,22 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		int buffer_length,
 		unsigned int reuse_texture_ID,
 		int flags,
-		int loading_as_cubemap )
+		int loading_as_cubemap)
 {
-	/*	variables	*/
+
 	DDS_header header;
 	unsigned int buffer_index = 0;
 	unsigned int tex_ID = 0;
-	/*	file reading variables	*/
-	unsigned int S3TC_type = 0;
+
+	unsigned int internal_format = 0;
 	unsigned char *DDS_data;
 	unsigned int DDS_main_size;
 	unsigned int DDS_full_size;
-	unsigned int width, height;
-	int mipmaps, cubemap, uncompressed, block_size = 16;
-	unsigned int flag;
+	int mipmaps, block_size = 16;
 	unsigned int cf_target, ogl_target_start, ogl_target_end;
 	unsigned int opengl_texture_type;
 	unsigned int format_type = GL_UNSIGNED_BYTE;
-	int i;
+
 	/*	1st off, does the filename even exist?	*/
 	if( NULL == buffer )
 	{
@@ -2060,129 +2061,154 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		result_string_pointer = "DDS file was too small to contain the DDS header";
 		return 0;
 	}
+
 	/*	try reading in the header	*/
-	memcpy ( (void*)(&header), (const void *)buffer, sizeof( DDS_header ) );
+	memcpy( (void *)( &header ), (const void *)buffer, sizeof( DDS_header ) );
 	buffer_index = sizeof( DDS_header );
 	/*	guilty until proven innocent	*/
 	result_string_pointer = "Failed to read a known DDS header";
 	/*	validate the header (warning, "goto"'s ahead, shield your eyes!!)	*/
-	flag = ('D'<<0)|('D'<<8)|('S'<<16)|(' '<<24);
-	if( header.dwMagic != flag ) {goto quick_exit;}
-	if( header.dwSize != 124 ) {goto quick_exit;}
+	unsigned int flag = ( 'D' << 0 ) | ( 'D' << 8 ) | ( 'S' << 16 ) | ( ' ' << 24 );
+
+	if( header.dwMagic != flag ) { goto quick_exit; }
+	if( header.dwSize != 124 ) { goto quick_exit; }
 	/*	I need all of these	*/
 	flag = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT;
-	if( (header.dwFlags & flag) != flag ) {goto quick_exit;}
+	if( ( header.dwFlags & flag ) != flag ) { goto quick_exit; }
 	/*	According to the MSDN spec, the dwFlags should contain
-		DDSD_LINEARSIZE if it's compressed, or DDSD_PITCH if
-		uncompressed.  Some DDS writers do not conform to the
-		spec, so I need to make my reader more tolerant	*/
+	    DDSD_LINEARSIZE if it's compressed, or DDSD_PITCH if
+	    uncompressed.  Some DDS writers do not conform to the
+	    spec, so I need to make my reader more tolerant	*/
 	/*	I need one of these	*/
 	flag = DDPF_FOURCC | DDPF_RGB | DDPF_LUMINANCE;
-	if( (header.sPixelFormat.dwFlags & flag) == 0 ) {goto quick_exit;}
-	if( header.sPixelFormat.dwSize != 32 ) {goto quick_exit;}
-	if( (header.sCaps.dwCaps1 & DDSCAPS_TEXTURE) == 0 ) {goto quick_exit;}
-	/*	make sure it is a type we can upload	*/
-	if( (header.sPixelFormat.dwFlags & DDPF_FOURCC) &&
-		!(
-		(header.sPixelFormat.dwFourCC == (('D'<<0)|('X'<<8)|('T'<<16)|('1'<<24))) ||
-		(header.sPixelFormat.dwFourCC == (('D'<<0)|('X'<<8)|('T'<<16)|('3'<<24))) ||
-		(header.sPixelFormat.dwFourCC == (('D'<<0)|('X'<<8)|('T'<<16)|('5'<<24)))
-		) )
+	if( ( header.sPixelFormat.dwFlags & flag ) == 0 ) { goto quick_exit; }
+	if( header.sPixelFormat.dwSize != 32 ) { goto quick_exit; }
+	if( ( header.sCaps.dwCaps1 & DDSCAPS_TEXTURE ) == 0 ) { goto quick_exit; }
+
+	enum Magics
 	{
-		goto quick_exit;
-	}
+		DXT1 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '1' << 24 ),
+		DXT3 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '3' << 24 ),
+		DXT5 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '5' << 24 ),
+		ATI2 = ( 'A' << 0 ) | ( 'T' << 8 ) | ( 'I' << 16 ) | ( '2' << 24 ),
+	};
+
+	/*	make sure it is a type we can upload	*/
+	if( ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) &&
+	    !( header.sPixelFormat.dwFourCC == DXT1 || header.sPixelFormat.dwFourCC == DXT3 ||
+	       header.sPixelFormat.dwFourCC == DXT5 || header.sPixelFormat.dwFourCC == ATI2 ) )
+	{ goto quick_exit; }
+
 	/*	OK, validated the header, let's load the image data	*/
 	result_string_pointer = "DDS header loaded and validated";
-	width = header.dwWidth;
-	height = header.dwHeight;
-	uncompressed = 1 - (header.sPixelFormat.dwFlags & DDPF_FOURCC) / DDPF_FOURCC;
-	cubemap = (header.sCaps.dwCaps2 & DDSCAPS2_CUBEMAP) / DDSCAPS2_CUBEMAP;
+	const int width = header.dwWidth;
+	const int height = header.dwHeight;
+	int uncompressed = 1 - ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) / DDPF_FOURCC;
+	int cubemap = ( header.sCaps.dwCaps2 & DDSCAPS2_CUBEMAP ) / DDSCAPS2_CUBEMAP;
 	if( uncompressed )
 	{
-		if ( header.sPixelFormat.dwRGBBitCount == 8 )
+		if( header.sPixelFormat.dwRGBBitCount == 8 )
 		{
-			if ( (header.sPixelFormat.dwRBitMask == 0xe0) &&
-				 (header.sPixelFormat.dwGBitMask == 0x1c) &&
-				 (header.sPixelFormat.dwBBitMask == 0x3))
+			if( ( header.sPixelFormat.dwRBitMask == 0xe0 ) && ( header.sPixelFormat.dwGBitMask == 0x1c ) &&
+			    ( header.sPixelFormat.dwBBitMask == 0x3 ) )
 			{
-				S3TC_type = GL_RGB;
+				internal_format = GL_RGB;
 				format_type = GL_UNSIGNED_BYTE_3_3_2;
 				block_size = 1;
-			} else
+			}
+			else
 			{
-				S3TC_type = GL_LUMINANCE;
+				internal_format = GL_LUMINANCE;
 				block_size = 1;
 			}
-		} else if ( header.sPixelFormat.dwRGBBitCount == 16 )
+		}
+		else if( header.sPixelFormat.dwRGBBitCount == 16 )
 		{
-			if ( (header.sPixelFormat.dwRBitMask == 0xf800) &&
-				 (header.sPixelFormat.dwGBitMask == 0x7e0) &&
-				 (header.sPixelFormat.dwBBitMask == 0x1f))
+			if( ( header.sPixelFormat.dwRBitMask == 0xf800 ) && ( header.sPixelFormat.dwGBitMask == 0x7e0 ) &&
+			    ( header.sPixelFormat.dwBBitMask == 0x1f ) )
 			{
-				//DXGI_FORMAT_B5G6R5_UNORM
-				S3TC_type = GL_RGBA;
+				// DXGI_FORMAT_B5G6R5_UNORM
+				internal_format = GL_RGBA;
 				format_type = GL_UNSIGNED_SHORT_5_5_5_1;
-				block_size = 2;
-			} else if ( (header.sPixelFormat.dwRBitMask == 0xf00) &&
-				 (header.sPixelFormat.dwGBitMask == 0xf0) &&
-				 (header.sPixelFormat.dwBBitMask == 0xf) &&
-				 (header.sPixelFormat.dwAlphaBitMask == 0xf000))
-			{
-				//D3DFMT_A4R4G4B4
-				S3TC_type = GL_RGBA;
-				format_type = GL_UNSIGNED_SHORT_4_4_4_4;
-				block_size = 2;
-			} else if ( (header.sPixelFormat.dwRBitMask == 0x7c00) &&
-				 (header.sPixelFormat.dwGBitMask == 0x3e0) &&
-				 (header.sPixelFormat.dwBBitMask == 0x1f))
-			{
-				//DXGI_FORMAT_B5G5R5A1_UNORM
-				S3TC_type = GL_RGBA;
-				format_type = GL_UNSIGNED_SHORT_5_5_5_1;
-				block_size = 2;
-			} else
-			{
-				S3TC_type = GL_RG;
 				block_size = 2;
 			}
-		} else
+			else if( ( header.sPixelFormat.dwRBitMask == 0xf00 ) && ( header.sPixelFormat.dwGBitMask == 0xf0 ) &&
+			         ( header.sPixelFormat.dwBBitMask == 0xf ) && ( header.sPixelFormat.dwAlphaBitMask == 0xf000 ) )
+			{
+				// D3DFMT_A4R4G4B4
+				internal_format = GL_RGBA;
+				format_type = GL_UNSIGNED_SHORT_4_4_4_4;
+				block_size = 2;
+			}
+			else if( ( header.sPixelFormat.dwRBitMask == 0x7c00 ) && ( header.sPixelFormat.dwGBitMask == 0x3e0 ) &&
+			         ( header.sPixelFormat.dwBBitMask == 0x1f ) )
+			{
+				// DXGI_FORMAT_B5G5R5A1_UNORM
+				internal_format = GL_RGBA;
+				format_type = GL_UNSIGNED_SHORT_5_5_5_1;
+				block_size = 2;
+			}
+			else
+			{
+				internal_format = GL_RG;
+				block_size = 2;
+			}
+		}
+		else
 		{
-			S3TC_type = GL_RGB;
+			internal_format = GL_RGB;
 			block_size = 3;
 			if( header.sPixelFormat.dwFlags & DDPF_ALPHAPIXELS )
 			{
-				S3TC_type = GL_RGBA;
+				internal_format = GL_RGBA;
 				block_size = 4;
 			}
 		}
 		DDS_main_size = width * height * block_size;
-	} else
+	}
+	else
 	{
-		/*	can we even handle direct uploading to OpenGL DXT compressed images?	*/
-		if( query_DXT_capability() != SOIL_CAPABILITY_PRESENT )
+		if( header.sPixelFormat.dwFourCC == ATI2 )
 		{
-			/*	we can't do it!	*/
-			result_string_pointer = "Direct upload of S3TC images not supported by the OpenGL driver";
-			return 0;
+			if( query_3Dc_capability() != SOIL_CAPABILITY_PRESENT )
+			{
+				/*	we can't do it!	*/
+				result_string_pointer = "Direct upload of 3Dc images not supported by the OpenGL driver";
+				return 0;
+			}
 		}
-		/*	well, we know it is DXT1/3/5, because we checked above	*/
-		switch( (header.sPixelFormat.dwFourCC >> 24) - '0' )
+		else
 		{
-		case 1:
-			S3TC_type = SOIL_RGBA_S3TC_DXT1;
+			if( query_DXT_capability() != SOIL_CAPABILITY_PRESENT )
+			{
+				/*	we can't do it!	*/
+				result_string_pointer = "Direct upload of S3TC images not supported by the OpenGL driver";
+				return 0;
+			}
+		}
+
+		switch( header.sPixelFormat.dwFourCC )
+		{
+		case DXT1:
+			internal_format = SOIL_RGBA_S3TC_DXT1;
 			block_size = 8;
 			break;
-		case 3:
-			S3TC_type = SOIL_RGBA_S3TC_DXT3;
+		case DXT3:
+			internal_format = SOIL_RGBA_S3TC_DXT3;
 			block_size = 16;
 			break;
-		case 5:
-			S3TC_type = SOIL_RGBA_S3TC_DXT5;
+		case DXT5:
+			internal_format = SOIL_RGBA_S3TC_DXT5;
 			block_size = 16;
+			break;
+		case ATI2:
+			block_size = 16;
+			internal_format = SOIL_COMPRESSED_RG_RGTC2;
 			break;
 		}
-		DDS_main_size = ((width+3)>>2)*((height+3)>>2)*block_size;
+		DDS_main_size = ( ( width + 3 ) >> 2 ) * ( ( height + 3 ) >> 2 ) * block_size;
 	}
+
 	if( cubemap )
 	{
 		/* does the user want a cubemap?	*/
@@ -2200,9 +2226,10 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			return 0;
 		}
 		ogl_target_start = SOIL_TEXTURE_CUBE_MAP_POSITIVE_X;
-		ogl_target_end =   SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
+		ogl_target_end = SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
 		opengl_texture_type = SOIL_TEXTURE_CUBE_MAP;
-	} else
+	}
+	else
 	{
 		/* does the user want a non-cubemap?	*/
 		if( loading_as_cubemap )
@@ -2212,48 +2239,41 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			return 0;
 		}
 		ogl_target_start = GL_TEXTURE_2D;
-		ogl_target_end =   GL_TEXTURE_2D;
+		ogl_target_end = GL_TEXTURE_2D;
 		opengl_texture_type = GL_TEXTURE_2D;
 	}
-	if( (header.sCaps.dwCaps1 & DDSCAPS_MIPMAP) && (header.dwMipMapCount > 1) )
+	if( ( header.sCaps.dwCaps1 & DDSCAPS_MIPMAP ) && ( header.dwMipMapCount > 1 ) )
 	{
 		mipmaps = header.dwMipMapCount - 1;
 		DDS_full_size = DDS_main_size;
-		for( i = 1; i <= mipmaps; ++ i )
+
+		for( int i = 1; i <= mipmaps; ++i )
 		{
-			int w, h;
-			w = width >> i;
-			h = height >> i;
-			if( w < 1 )
-			{
-				w = 1;
-			}
-			if( h < 1 )
-			{
-				h = 1;
-			}
-			if ( uncompressed )
+			int w = width >> i;
+			int h = height >> i;
+			if( w < 1 ) { w = 1; }
+			if( h < 1 ) { h = 1; }
+			if( uncompressed )
 			{
 				/*	uncompressed DDS, simple MIPmap size calculation	*/
-				DDS_full_size += w*h*block_size;
-			} else
+				DDS_full_size += w * h * block_size;
+			}
+			else
 			{
 				/*	compressed DDS, MIPmap size calculation is block based	*/
-				DDS_full_size += ((w+3)/4)*((h+3)/4)*block_size;
+				DDS_full_size += ( ( w + 3 ) / 4 ) * ( ( h + 3 ) / 4 ) * block_size;
 			}
 		}
-	} else
+	}
+	else
 	{
 		mipmaps = 0;
 		DDS_full_size = DDS_main_size;
 	}
-	DDS_data = (unsigned char*)malloc( DDS_full_size );
+	DDS_data = (unsigned char *)malloc( DDS_full_size );
 	/*	got the image data RAM, create or use an existing OpenGL texture handle	*/
 	tex_ID = reuse_texture_ID;
-	if( tex_ID == 0 )
-	{
-		glGenTextures( 1, &tex_ID );
-	}
+	if( tex_ID == 0 ) { glGenTextures( 1, &tex_ID ); }
 	/*  bind an OpenGL texture ID	*/
 	glBindTexture( opengl_texture_type, tex_ID );
 	/*	do this for each face of the cubemap!	*/
@@ -2262,109 +2282,97 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		if( buffer_index + DDS_full_size <= (unsigned int)buffer_length )
 		{
 			unsigned int byte_offset = DDS_main_size;
-			memcpy( (void*)DDS_data, (const void*)(&buffer[buffer_index]), DDS_full_size );
+			memcpy( (void *)DDS_data, (const void *)( &buffer[buffer_index] ), DDS_full_size );
 			buffer_index += DDS_full_size;
 			/*	upload the main chunk	*/
 			if( uncompressed )
 			{
-				if ( (header.sPixelFormat.dwRBitMask == 0xff0000) && ( ( block_size == 3 && S3TC_type == GL_RGB ) || ( block_size == 4 && S3TC_type == GL_RGBA ) ) )
+				if( ( header.sPixelFormat.dwRBitMask == 0xff0000 ) &&
+				    ( ( block_size == 3 && internal_format == GL_RGB ) ||
+				      ( block_size == 4 && internal_format == GL_RGBA ) ) )
 				{
-					for( i = 0; i < (int)DDS_full_size; i += block_size )
+					for( int i = 0; i < (int)DDS_full_size; i += block_size )
 					{
 						unsigned char temp = DDS_data[i];
-						DDS_data[i] = DDS_data[i+2];
-						DDS_data[i+2] = temp;
-					}
-				} else if ( block_size == 2 &&
-							(header.sPixelFormat.dwRBitMask == 0xf800 || header.sPixelFormat.dwRBitMask == 0x7c00) )
-				{
-					// convert to R5G5B5A1
-					for( i = 0; i < (int)DDS_full_size; i += block_size )
-					{
-						unsigned short pixel = DDS_data[i] << 0 | DDS_data[i+1] << 8;
-						char r = ((pixel & header.sPixelFormat.dwRBitMask) >> 10);
-						char g = ((pixel & header.sPixelFormat.dwGBitMask) >> 5);
-						char b = ((pixel & header.sPixelFormat.dwBBitMask) >> 0);
-						char a = 1;
-						if ( header.sPixelFormat.dwAlphaBitMask != 0 ) {
-							a = (pixel & header.sPixelFormat.dwAlphaBitMask) >> 15;
-						}
-						unsigned short pixel_new = (r << 11) | (g << 6) | (b << 1) | a;
-						DDS_data[i] = (pixel_new >> 0) & 0xff;
-						DDS_data[i+1] = (pixel_new >> 8) & 0xff;
-					}
-				} else if ( block_size == 2 &&
-							(header.sPixelFormat.dwRBitMask == 0xf00) &&
-							(header.sPixelFormat.dwGBitMask == 0xf0) &&
-							(header.sPixelFormat.dwBBitMask == 0xf) &&
-							(header.sPixelFormat.dwAlphaBitMask == 0xf000))
-				{
-					for( i = 0; i < (int)DDS_full_size; i += block_size )
-					{
-						unsigned short pixel = DDS_data[i] << 0 | DDS_data[i+1] << 8;
-						char r = ((pixel & header.sPixelFormat.dwRBitMask) >> 8);
-						char g = ((pixel & header.sPixelFormat.dwGBitMask) >> 4);
-						char b = ((pixel & header.sPixelFormat.dwBBitMask) >> 0);
-						char a = ((pixel & header.sPixelFormat.dwAlphaBitMask) >> 12);
-						unsigned short pixel_new = (r << 12) | (g << 8) | (b << 4) | a;
-						DDS_data[i] = (pixel_new >> 0) & 0xff;
-						DDS_data[i+1] = (pixel_new >> 8) & 0xff;
+						DDS_data[i] = DDS_data[i + 2];
+						DDS_data[i + 2] = temp;
 					}
 				}
-				glTexImage2D(
-					cf_target, 0,
-					S3TC_type, width, height, 0,
-					S3TC_type, format_type, DDS_data );
-			} else
+				else if( block_size == 2 &&
+				         ( header.sPixelFormat.dwRBitMask == 0xf800 || header.sPixelFormat.dwRBitMask == 0x7c00 ) )
+				{
+					// convert to R5G5B5A1
+					for( int i = 0; i < (int)DDS_full_size; i += block_size )
+					{
+						unsigned short pixel = DDS_data[i] << 0 | DDS_data[i + 1] << 8;
+						char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 10 );
+						char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 5 );
+						char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
+						char a = 1;
+						if( header.sPixelFormat.dwAlphaBitMask != 0 )
+						{ a = ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 15; }
+						unsigned short pixel_new = ( r << 11 ) | ( g << 6 ) | ( b << 1 ) | a;
+						DDS_data[i] = ( pixel_new >> 0 ) & 0xff;
+						DDS_data[i + 1] = ( pixel_new >> 8 ) & 0xff;
+					}
+				}
+				else if( block_size == 2 && ( header.sPixelFormat.dwRBitMask == 0xf00 ) &&
+				         ( header.sPixelFormat.dwGBitMask == 0xf0 ) && ( header.sPixelFormat.dwBBitMask == 0xf ) &&
+				         ( header.sPixelFormat.dwAlphaBitMask == 0xf000 ) )
+				{
+					for( int i = 0; i < (int)DDS_full_size; i += block_size )
+					{
+						unsigned short pixel = DDS_data[i] << 0 | DDS_data[i + 1] << 8;
+						char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 8 );
+						char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 4 );
+						char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
+						char a = ( ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 12 );
+						unsigned short pixel_new = ( r << 12 ) | ( g << 8 ) | ( b << 4 ) | a;
+						DDS_data[i] = ( pixel_new >> 0 ) & 0xff;
+						DDS_data[i + 1] = ( pixel_new >> 8 ) & 0xff;
+					}
+				}
+				glTexImage2D( cf_target, 0, internal_format, width, height, 0, internal_format, format_type, DDS_data );
+			}
+			else
 			{
-				soilGlCompressedTexImage2D(
-					cf_target, 0,
-					S3TC_type, width, height, 0,
-					DDS_main_size, DDS_data );
+				soilGlCompressedTexImage2D( cf_target, 0, internal_format, width, height, 0, DDS_main_size, DDS_data );
 			}
 			/*	upload the mipmaps, if we have them	*/
-			for( i = 1; i <= mipmaps; ++i )
+			for( int i = 1; i <= mipmaps; ++i )
 			{
 				int w, h, mip_size;
 				w = width >> i;
 				h = height >> i;
-				if( w < 1 )
-				{
-					w = 1;
-				}
-				if( h < 1 )
-				{
-					h = 1;
-				}
+				if( w < 1 ) { w = 1; }
+				if( h < 1 ) { h = 1; }
 				/*	upload this mipmap	*/
 				if( uncompressed )
 				{
-					mip_size = w*h*block_size;
-					glTexImage2D(
-						cf_target, i,
-						S3TC_type, w, h, 0,
-						S3TC_type, format_type, &DDS_data[byte_offset] );
-				} else
+					mip_size = w * h * block_size;
+					glTexImage2D( cf_target, i, internal_format, w, h, 0, internal_format, format_type,
+					              &DDS_data[byte_offset] );
+				}
+				else
 				{
-					mip_size = ((w+3)/4)*((h+3)/4)*block_size;
-					soilGlCompressedTexImage2D(
-						cf_target, i,
-						S3TC_type, w, h, 0,
-						mip_size, &DDS_data[byte_offset] );
+					mip_size = ( ( w + 3 ) / 4 ) * ( ( h + 3 ) / 4 ) * block_size;
+					soilGlCompressedTexImage2D( cf_target, i, internal_format, w, h, 0, mip_size,
+					                            &DDS_data[byte_offset] );
 				}
 				/*	and move to the next mipmap	*/
 				byte_offset += mip_size;
 			}
 			/*	it worked!	*/
 			result_string_pointer = "DDS file loaded";
-		} else
+		}
+		else
 		{
-			glDeleteTextures( 1, & tex_ID );
+			glDeleteTextures( 1, &tex_ID );
 			tex_ID = 0;
 			cf_target = ogl_target_end + 1;
 			result_string_pointer = "DDS file was too small for expected image data";
 		}
-	}/* end reading each face */
+	} /* end reading each face */
 	SOIL_free_image_data( DDS_data );
 	if( tex_ID )
 	{
@@ -2374,7 +2382,8 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			/*	instruct OpenGL to use the MIPmaps	*/
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
-		} else
+		}
+		else
 		{
 			/*	instruct OpenGL _NOT_ to use the MIPmaps	*/
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
@@ -2386,7 +2395,8 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_S, GL_REPEAT );
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_T, GL_REPEAT );
 			glTexParameteri( opengl_texture_type, SOIL_TEXTURE_WRAP_R, GL_REPEAT );
-		} else
+		}
+		else
 		{
 			unsigned int clamp_mode = SOIL_CLAMP_TO_EDGE;
 			/* unsigned int clamp_mode = GL_CLAMP; */
@@ -2397,7 +2407,6 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	}
 
 quick_exit:
-	/*	report success or failure	*/
 	return tex_ID;
 }
 
@@ -3035,6 +3044,46 @@ int query_DXT_capability( void )
 	}
 	/*	let the user know if we can do DXT or not	*/
 	return has_DXT_capability;
+}
+
+int query_3Dc_capability(void) {
+	/*	check for the capability	*/
+	if (has_3Dc_capability == SOIL_CAPABILITY_UNKNOWN) 
+	{
+		/*	we haven't yet checked for the capability, do so	*/
+		if (0 == SOIL_GL_ExtensionSupported(
+			"ARB_texture_compression_rgtc") &&
+			0 == SOIL_GL_ExtensionSupported(
+				"GL_ARB_texture_compression_rgtc") &&
+			0 == SOIL_GL_ExtensionSupported(
+				"GL_EXT_texture_compression_rgtc")
+			) {
+			/*	not there, flag the failure	*/
+			has_3Dc_capability = SOIL_CAPABILITY_NONE;
+		} else 
+		{
+			P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr = get_glCompressedTexImage2D_addr();
+
+			/*	Flag it so no checks needed later	*/
+			if (NULL == ext_addr) 
+			{
+				/*	hmm, not good!!  This should not happen, but does on my
+					laptop's VIA chipset.  The GL_EXT_texture_compression_s3tc
+					spec requires that ARB_texture_compression be present too.
+					this means I can upload and have the OpenGL drive do the
+					conversion, but I can't use my own routines or load DDS files
+					from disk and upload them directly [8^(	*/
+				has_3Dc_capability = SOIL_CAPABILITY_NONE;
+			} else 
+			{
+				/*	all's well!	*/
+				soilGlCompressedTexImage2D = ext_addr;
+				has_3Dc_capability = SOIL_CAPABILITY_PRESENT;
+			}
+		}
+	}
+	/*	let the user know if we can do DXT or not	*/
+	return has_3Dc_capability;
 }
 
 int query_PVR_capability( void )
