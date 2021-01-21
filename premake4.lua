@@ -1,3 +1,5 @@
+newoption { trigger = "use-frameworks", description = "In macOS it will try to link the external libraries from its frameworks. For example, instead of linking against SDL2 it will link against SDL2.framework." }
+
 function newplatform(plf)
 	local name = plf.name
 	local description = plf.description
@@ -64,12 +66,16 @@ function is_vs()
 	return ( string.starts(_ACTION,"vs") )
 end
 
+function is_xcode()
+	return ( string.starts(_ACTION,"xcode") )
+end
+
 function os.is_real( os_name )
 	return os.get() == os_name
 end
 
 function os_findlib( name )
-	if os.is_real("macosx") then
+	if os.is_real("macosx") and ( is_xcode() or _OPTIONS["use-frameworks"] ) then
 		local path = "/Library/Frameworks/" .. name .. ".framework"
 
 		if os.isdir( path ) then
@@ -81,7 +87,7 @@ function os_findlib( name )
 end
 
 function get_backend_link_name( name )
-	if os.is_real("macosx") then
+	if os.is_real("macosx") and ( is_xcode() or _OPTIONS["use-frameworks"] ) then
 		local fname = name .. ".framework"
 
 		if os_findlib( name ) then -- Search for the framework
@@ -109,6 +115,9 @@ solution "SOIL2"
 
 		targetdir("lib/" .. os.get() .. "/")
 		files { "src/SOIL2/*.c" }
+
+		configuration "macosx"
+			defines { "GL_SILENCE_DEPRECATION" }
 
 		configuration "debug"
 			defines { "DEBUG" }
@@ -154,6 +163,7 @@ solution "SOIL2"
 			links { "OpenGL.framework", "CoreFoundation.framework" }
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
+			defines { "GL_SILENCE_DEPRECATION" }
 
 		configuration "haiku"
 			links {"GL"}
@@ -200,6 +210,10 @@ solution "SOIL2"
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
+			defines { "GL_SILENCE_DEPRECATION" }
+			if not _OPTIONS["use-frameworks"] then
+				defines { "SOIL2_NO_FRAMEWORKS" }
+			end
 
 		configuration "haiku"
 			links {"GL","SDL2"}
@@ -246,6 +260,10 @@ solution "SOIL2"
 			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
 			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
+			defines { "GL_SILENCE_DEPRECATION" }
+			if not _OPTIONS["use-frameworks"] then
+				defines { "SOIL2_NO_FRAMEWORKS" }
+			end
 
 		configuration "haiku"
 			links {"GL","SDL2"}
