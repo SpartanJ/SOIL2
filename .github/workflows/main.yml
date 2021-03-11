@@ -41,7 +41,7 @@ jobs:
     - name: Install dependencies
       shell: powershell
       run: |
-        Invoke-WebRequest -Uri "https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha14-windows.zip" -OutFile "premake-5.0.0-alpha15-windows.zip"
+        Invoke-WebRequest -Uri "https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha15-windows.zip" -OutFile "premake-5.0.0-alpha15-windows.zip"
         Expand-Archive -DestinationPath . -Path premake-5.0.0-alpha15-windows.zip
     - name: Create project
       shell: powershell
