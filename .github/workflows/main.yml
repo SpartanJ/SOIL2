@@ -33,7 +33,7 @@ jobs:
         ./premake5 gmake2
         make -C make/macosx/ -j`nproc` all
   Windows:
-    runs-on: windows-latests
+    runs-on: windows-latest
     env:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
