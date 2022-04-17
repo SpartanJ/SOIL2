@@ -122,6 +122,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+unsigned long SOIL_version() { return SOIL_COMPILED_VERSION; }
+
 /*	error reporting	*/
 const char *result_string_pointer = "SOIL initialized";
 
@@ -268,7 +270,7 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 	if ( NULL == openglModule )
 		openglModule = LoadLibraryA("opengl32.dll");
 
-	func =  wglGetProcAddress( proc );
+	func =  (void*)wglGetProcAddress( proc );
 
 	if (!soilTestWinProcPointer((const PROC)func)) {
 		func = (void *)GetProcAddress(openglModule, proc);

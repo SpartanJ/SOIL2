@@ -60,6 +60,8 @@ int main( int argc, char* argv[] )
 		exit( EXIT_FAILURE );
 	}
 
+	std::cout << "Starting demo with SOIL version: " << SOIL_version() << std::endl;
+
 	SDL_GL_SetSwapInterval( 1 );
 
 	SDL_GL_MakeCurrent( window, context );
