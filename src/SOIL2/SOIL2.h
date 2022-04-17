@@ -50,7 +50,7 @@ extern "C" {
 #endif
 
 #define SOIL_MAJOR_VERSION 1
-#define SOIL_MINOR_VERSION 2
+#define SOIL_MINOR_VERSION 3
 #define SOIL_PATCH_LEVEL 0
 
 #define SOIL_VERSION_NUM( X, Y, Z ) ( (X)*1000 + (Y)*100 + ( Z ) )
