@@ -44,8 +44,8 @@ function get_backend_link_name( name )
 	return name
 end
 
-remote_sdl2_version = "SDL2-2.0.10"
-remote_sdl2_devel_vc_url = "https://www.libsdl.org/release/SDL2-devel-2.0.10-VC.zip"
+remote_sdl2_version = "SDL2-2.0.20"
+remote_sdl2_devel_vc_url = "https://www.libsdl.org/release/SDL2-devel-2.0.20-VC.zip"
 
 function download_and_extract_dependencies()
 	if _OPTIONS["windows-vc-build"] and not os.isdir("./" .. remote_sdl2_version) then
@@ -57,7 +57,7 @@ function download_and_extract_dependencies()
 			print("Downloaded successfully to: " .. local_file)
 			zip.extract(local_file, dest_dir)
 			print("Extracted " .. local_file .. " into " .. dest_dir)
-			ok = os.copyfile(dest_dir .. remote_sdl2_version .. "/lib/x86/SDL2.dll", "./bin/SDL2.dll")
+			ok = os.copyfile(dest_dir .. remote_sdl2_version .. "/lib/x64/SDL2.dll", "./bin/SDL2.dll")
 			if not ok then
 				print("Failed to copy SDL2.dll.")
 			end

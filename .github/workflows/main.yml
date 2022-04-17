@@ -33,20 +33,20 @@ jobs:
         ./premake5 gmake2
         make -C make/macosx/ -j`nproc` all
   Windows:
-    runs-on: windows-2019
+    runs-on: windows-latests
     env:
-      MSBUILD_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
     - uses: actions/checkout@v2
     - name: Install dependencies
       shell: powershell
       run: |
-        Invoke-WebRequest -Uri "https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha15-windows.zip" -OutFile "premake-5.0.0-alpha15-windows.zip"
-        Expand-Archive -DestinationPath . -Path premake-5.0.0-alpha15-windows.zip
+        Invoke-WebRequest -Uri "https://github.com/premake/premake-core/releases/download/v5.0.0-beta1/premake-5.0.0-beta1-windows.zip" -OutFile "premake-5.0.0-beta1-windows.zip"
+        Expand-Archive -DestinationPath . -Path premake-5.0.0-beta1-windows.zip
     - name: Create project
       shell: powershell
       run: |
-        ./premake5.exe --windows-vc-build vs2019
+        ./premake5.exe --windows-vc-build vs2022
     - name: Build
       shell: cmd
       run: |
