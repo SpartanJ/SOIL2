@@ -8,7 +8,11 @@ find_package(OpenGL REQUIRED)
 
 ### Library
 
-set(SOIL2_HEADERS
+set(SOIL2_PUBLIC_HEADERS
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
+)
+
+set(SOIL2_PRIVATE_HEADERS
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_DXT.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_helper.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/jo_jpeg.h
@@ -37,15 +41,21 @@ set(SOIL2_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/common.cpp
 )
 
-add_library(soil2 ${SOIL2_HEADERS} ${SOIL2_SRC})
+add_library(soil2
+        ${SOIL2_SRC}
+        ${SOIL2_PUBLIC_HEADERS}
+        ${SOIL2_PRIVATE_HEADERS}
+)
 target_compile_options(soil2 PRIVATE "-fPIC")
-target_include_directories(
-    soil2 PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/common/>
-    $<INSTALL_INTERFACE:include/soil2>
+target_include_directories( soil2 
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/common/>
+        $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(soil2 PRIVATE OpenGL::GL)
+
+set_property(TARGET soil2 PROPERTY PUBLIC_HEADER ${SOIL2_PUBLIC_HEADERS})
 
 ### Tests
 
@@ -79,11 +89,7 @@ install(
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
-)
-
-include(GNUInstallDirs)
-install(FILES ${SOIL2_HEADERS}
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/soil2
+    PUBLIC_HEADER DESTINATION include
 )
 
 install(
