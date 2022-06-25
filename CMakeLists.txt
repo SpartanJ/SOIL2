@@ -3,6 +3,9 @@ project(soil2 LANGUAGES CXX C VERSION 1.0.0)
 
 option(SOIL2_BUILD_TESTS "Build tests")
 
+set(OpenGL_GL_PREFERENCE GLVND)
+find_package(OpenGL REQUIRED)
+
 ### Library
 
 set(SOIL2_HEADERS
@@ -42,14 +45,12 @@ target_include_directories(
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/common/>
     $<INSTALL_INTERFACE:include/soil2>
 )
+target_link_libraries(soil2 PRIVATE OpenGL::GL)
 
 ### Tests
 
 if(SOIL2_BUILD_TESTS)
-    set(OpenGL_GL_PREFERENCE GLVND)
-
     find_package(SDL2 REQUIRED)
-    find_package(OpenGL REQUIRED)
 
     add_executable(soil2_test
         ${CMAKE_CURRENT_SOURCE_DIR}/src/test/test_SOIL2.cpp
