@@ -101,7 +101,7 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 
 **Compiling:**
 ------------
-To generate project files you will need to [download and install](http://industriousone.com/premake/download) [Premake](http://industriousone.com/what-premake)
+To generate project files you will need to [download and install](https://premake.github.io/download) [Premake](https://premake.github.io/docs/What-Is-Premake)
 
 Then you can generate the static library for your platform just going to the project directory where the premake4.lua file is located and then execute:
 
