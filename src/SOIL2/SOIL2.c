@@ -270,7 +270,7 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 	if ( NULL == openglModule )
 		openglModule = LoadLibraryA("opengl32.dll");
 
-	func =  (void*)wglGetProcAddress( proc );
+	func = (void*)wglGetProcAddress(proc);
 
 	if (!soilTestWinProcPointer((const PROC)func)) {
 		func = (void *)GetProcAddress(openglModule, proc);
@@ -2008,6 +2008,147 @@ int
 		result_string_pointer = "Image saved";
 	}
 	return save_result;
+}
+
+
+typedef struct
+{
+	unsigned char* buffer;
+	int allocated; // number of bytes allocated to the buffer
+	int written; // number of bytes written to the buffer
+	int alloc_block_size; // size of blocks to alloc as memory is required
+} stbi_write_context;
+
+void write_to_memory(void* context, void* data, int size)
+{
+	stbi_write_context* ctx = (stbi_write_context*)context;
+
+	if(ctx == 0)
+		return;
+
+	if (ctx->buffer == 0)
+	{
+		// safety
+		ctx->written = 0;
+		ctx->allocated = 0;
+
+		// first alloc
+		while (ctx->allocated < (ctx->written + size))
+		{
+			ctx->allocated += ctx->alloc_block_size;
+		}
+		ctx->buffer = (unsigned char*) malloc(ctx->allocated);
+	}
+	else if((ctx->written + size) > ctx->allocated)
+	{
+		ctx->allocated += ctx->alloc_block_size;
+		while (ctx->allocated < (ctx->written + size))
+		{
+			ctx->allocated += ctx->alloc_block_size;
+		}
+
+		ctx->buffer = (unsigned char*)realloc(ctx->buffer,ctx->allocated);
+	}
+
+	if(ctx->buffer == 0)
+		return;
+
+	memcpy(ctx->buffer + ctx->written, data, size);
+	ctx->written += size;
+}
+
+
+// release the returned memory with SOIL_free_image_data
+unsigned char*
+SOIL_write_image_to_memory_quality
+(
+	int image_type,
+	int width, int height, int channels,
+	const unsigned char* const data,
+	int quality,
+	int* imageSize
+)
+{
+	int save_result;
+
+	/*	error check	*/
+	if ((width < 1) || (height < 1) ||
+		(channels < 1) || (channels > 4) ||
+		(data == NULL) ||
+		(imageSize == NULL)
+		)
+	{
+		return 0;
+	}
+
+	unsigned char* imageMemory = NULL;
+	*imageSize = 0;
+
+	stbi_write_context context;
+	context.alloc_block_size = 4096; // 4k chunks
+	context.buffer = 0;
+	context.allocated = 0;
+	context.written = 0;
+
+	if (image_type == SOIL_SAVE_TYPE_BMP)
+	{
+		save_result = stbi_write_bmp_to_func(write_to_memory, &context, width, height, channels, (const unsigned char*)data);
+	}
+	else if (image_type == SOIL_SAVE_TYPE_TGA)
+	{
+		save_result = stbi_write_tga_to_func(write_to_memory, &context, width, height, channels, (const unsigned char*)data);
+	}
+	else if (image_type == SOIL_SAVE_TYPE_DDS)
+	{
+		save_result = 0; // not supported thru stbi
+	} 
+	else if (image_type == SOIL_SAVE_TYPE_PNG)
+	{
+		save_result = stbi_write_png_to_func(write_to_memory, &context, width, height, channels, (const unsigned char*)data, 0);
+	} 
+	else if (image_type == SOIL_SAVE_TYPE_JPG)
+	{
+		save_result = stbi_write_jpg_to_func(write_to_memory, &context, width, height, channels, (const unsigned char*)data, quality);
+	}
+	else
+	{
+		save_result = 0;
+	}
+
+	if (save_result)
+	{
+		imageMemory = context.buffer;
+		*imageSize = context.written;
+	}
+	else
+	{
+		if (context.buffer)
+			free(context.buffer);
+	}
+
+	if (save_result == 0)
+	{
+		result_string_pointer = "Saving the image failed";
+	}
+	else
+	{
+		result_string_pointer = "Image saved";
+	}
+	
+	return imageMemory;
+}
+
+// release the returned memory with SOIL_free_image_data
+unsigned char*
+SOIL_write_image_to_memory
+(
+	int image_type,
+	int width, int height, int channels,
+	const unsigned char* const data,
+	int* imageSize
+)
+{
+	return SOIL_write_image_to_memory_quality(image_type, width, height, channels, data, 80, imageSize);
 }
 
 void
