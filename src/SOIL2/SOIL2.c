@@ -2047,7 +2047,19 @@ void write_to_memory(void* context, void* data, int size)
 			ctx->allocated += ctx->alloc_block_size;
 		}
 
-		ctx->buffer = (unsigned char*)realloc(ctx->buffer,ctx->allocated);
+		unsigned char* rebuff = (unsigned char*)realloc(ctx->buffer, ctx->allocated);
+		if (rebuff == 0)
+		{
+			// out of memory
+			free(ctx->buffer);
+			ctx->buffer = 0;
+			ctx->allocated = 0;
+			return;
+		}
+		else
+		{
+			ctx->buffer = rebuff;
+		}
 	}
 
 	if(ctx->buffer == 0)
@@ -2128,11 +2140,11 @@ SOIL_write_image_to_memory_quality
 
 	if (save_result == 0)
 	{
-		result_string_pointer = "Saving the image failed";
+		result_string_pointer = "writing the image failed";
 	}
 	else
 	{
-		result_string_pointer = "Image saved";
+		result_string_pointer = "Image written";
 	}
 	
 	return imageMemory;
