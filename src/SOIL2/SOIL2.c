@@ -117,7 +117,6 @@
 #include "image_DXT.h"
 #include "pvr_helper.h"
 #include "pkm_helper.h"
-#include "jo_jpeg.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1974,12 +1973,12 @@ int
 	if( image_type == SOIL_SAVE_TYPE_BMP )
 	{
 		save_result = stbi_write_bmp( filename,
-				width, height, channels, (void*)data );
+				width, height, channels, (const void*)data );
 	} else
 	if( image_type == SOIL_SAVE_TYPE_TGA )
 	{
 		save_result = stbi_write_tga( filename,
-				width, height, channels, (void*)data );
+				width, height, channels, (const void*)data );
 	} else
 	if( image_type == SOIL_SAVE_TYPE_DDS )
 	{
@@ -1989,11 +1988,11 @@ int
 	if( image_type == SOIL_SAVE_TYPE_PNG )
 	{
 		save_result = stbi_write_png( filename,
-				width, height, channels, (const unsigned char *const)data, 0 );
+				width, height, channels, (const void*)data, 0 );
 	} else
 	if ( image_type == SOIL_SAVE_TYPE_JPG )
 	{
-		save_result = jo_write_jpg( filename, (const void*)data, width, height, channels, quality );
+		save_result = stbi_write_jpg( filename, width, height, channels, (const void*)data, quality );
 	}
 	else
 	{

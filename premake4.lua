@@ -46,7 +46,14 @@ newgcctoolchain {
 	name = "mingw32",
 	description = "Mingw32 to cross-compile windows binaries from *nix",
 	prefix = "i686-w64-mingw32-",
-	cppflags = ""
+	cppflags = "-B /usr/bin/i686-w64-mingw32-"
+}
+
+newgcctoolchain {
+	name = "mingw64",
+	description = "Mingw64 to cross-compile windows binaries from *nix",
+	prefix = "x86_64-w64-mingw32-",
+	cppflags = "-B /usr/bin/x86_64-w64-mingw32-"
 }
 
 if _OPTIONS.platform then
