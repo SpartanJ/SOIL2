@@ -60,7 +60,7 @@ extern "C" {
 
 #define SOIL_VERSION_ATLEAST( X, Y, Z ) ( SOIL_COMPILED_VERSION >= SOIL_VERSION_NUM( X, Y, Z ) )
 
-unsigned long SOIL_version();
+	unsigned long SOIL_version();
 
 /**
 	The format of images that may be loaded (force_channels).
@@ -439,6 +439,34 @@ int
 		int width, int height, int channels,
 		const unsigned char *const data
 	);
+
+
+/**
+	Saves an image from an array of unsigned chars (RGBA) to a memory buffer in the target format.
+	Free the buffer with SOIL_free_image_data.
+	\param quality parameter only used for SOIL_SAVE_TYPE_JPG files, values accepted between 0 and 100.
+	\param imageSize returns the byte count of the image.
+	\return 0 if failed, otherwise returns 1
+**/
+
+unsigned char*
+SOIL_write_image_to_memory_quality
+(
+	int image_type,
+	int width, int height, int channels,
+	const unsigned char* const data,
+	int quality,
+	int* imageSize
+);
+
+unsigned char*
+SOIL_write_image_to_memory
+(
+	int image_type,
+	int width, int height, int channels,
+	const unsigned char* const data,
+	int* imageSize
+);
 
 /**
 	Frees the image data (note, this is just C's "free()"...this function is
