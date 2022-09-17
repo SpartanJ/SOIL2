@@ -10,3 +10,8 @@ projects/
 bin/SDL2.dll
 *.dll
 SDL2-2.0.20*
+/CMakeFiles
+*.a
+*.cmake
+Makefile
+CMakeCache.txt

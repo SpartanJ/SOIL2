@@ -15,7 +15,6 @@ set(SOIL2_PUBLIC_HEADERS
 set(SOIL2_PRIVATE_HEADERS
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_DXT.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_helper.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/jo_jpeg.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/pkm_helper.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/pvr_helper.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
@@ -47,7 +46,7 @@ add_library(soil2
         ${SOIL2_PRIVATE_HEADERS}
 )
 target_compile_options(soil2 PRIVATE "-fPIC")
-target_include_directories( soil2 
+target_include_directories( soil2
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/common/>
