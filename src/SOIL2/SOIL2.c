@@ -2181,6 +2181,17 @@ const char*
 	return result_string_pointer;
 }
 
+/* This circumvent a VS2022 compiler bug */
+#ifdef _MSC_VER
+#pragma optimize( "", off )
+#endif
+static inline int calc_total_block_size( int w, int h, int block_size ) {
+	return ( ( w + 3 ) >> 2 ) * ( ( h + 3 ) >> 2 ) * block_size;
+}
+#ifdef _MSC_VER
+#pragma optimize( "", on )
+#endif
+
 unsigned int SOIL_direct_load_DDS_from_memory(
 		const unsigned char *const buffer,
 		int buffer_length,
@@ -2396,6 +2407,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		ogl_target_end = GL_TEXTURE_2D;
 		opengl_texture_type = GL_TEXTURE_2D;
 	}
+
 	if( ( header.sCaps.dwCaps1 & DDSCAPS_MIPMAP ) && ( header.dwMipMapCount > 1 ) )
 	{
 		mipmaps = header.dwMipMapCount - 1;
@@ -2415,7 +2427,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			else
 			{
 				/*	compressed DDS, MIPmap size calculation is block based	*/
-				DDS_full_size += ( ( w + 3 ) / 4 ) * ( ( h + 3 ) / 4 ) * block_size;
+				DDS_full_size += calc_total_block_size( w, h, block_size );
 			}
 		}
 	}
