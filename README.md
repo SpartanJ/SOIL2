@@ -1,7 +1,7 @@
 Simple OpenGL Image Library 2 ![SOIL2](https://web.ensoft.dev/soil2/soil2-logo.svg)
 =============================
 
-[![build status](https://img.shields.io/github/workflow/status/SpartanJ/SOIL2/build)](https://github.com/SpartanJ/SOIL2/actions?query=workflow%3Abuild)
+[![build status](https://img.shields.io/github/actions/workflow/status/SpartanJ/SOIL2/main.yml?branch=master)](https://github.com/SpartanJ/SOIL2/actions?query=workflow%3Abuild)
 
 **Introduction:**
 --------------
