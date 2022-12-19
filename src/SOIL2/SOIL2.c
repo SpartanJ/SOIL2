@@ -2200,7 +2200,6 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		int loading_as_cubemap)
 {
 
-	DDS_header header;
 	unsigned int buffer_index = 0;
 	unsigned int tex_ID = 0;
 
@@ -2227,9 +2226,11 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		return 0;
 	}
 
-	/*	try reading in the header	*/
+	// Try reading in the header
+	DDS_header header;
 	memcpy( (void *)( &header ), (const void *)buffer, sizeof( DDS_header ) );
-	buffer_index = sizeof( DDS_header );
+	
+	buffer_index += sizeof(DDS_header);
 	/*	guilty until proven innocent	*/
 	result_string_pointer = "Failed to read a known DDS header";
 	/*	validate the header (warning, "goto"'s ahead, shield your eyes!!)	*/
@@ -2256,16 +2257,30 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		DXT3 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '3' << 24 ),
 		DXT5 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '5' << 24 ),
 		ATI2 = ( 'A' << 0 ) | ( 'T' << 8 ) | ( 'I' << 16 ) | ( '2' << 24 ),
+		DX10 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( '1' << 16 ) | ( '0' << 24 ),
 	};
 
-	/*	make sure it is a type we can upload	*/
-	if( ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) &&
-	    !( header.sPixelFormat.dwFourCC == DXT1 || header.sPixelFormat.dwFourCC == DXT3 ||
-	       header.sPixelFormat.dwFourCC == DXT5 || header.sPixelFormat.dwFourCC == ATI2 ) )
-	{ goto quick_exit; }
+	// DX10 has an extended header
+	DDS_HEADER_DXT10 dx10_header;
+	if (header.sPixelFormat.dwFourCC == DX10) {
+		memcpy((void*)(&dx10_header), (const void*)&buffer[buffer_index], sizeof(DDS_HEADER_DXT10));
+		buffer_index += sizeof(dx10_header);
+	}
+
+	// make sure it is a type we can upload
+	if ((header.sPixelFormat.dwFlags & DDPF_FOURCC) 
+		&& header.sPixelFormat.dwFourCC != DXT1 
+		&& header.sPixelFormat.dwFourCC != DXT3 
+		&& header.sPixelFormat.dwFourCC != DXT5 
+		&& header.sPixelFormat.dwFourCC != ATI2 
+		&& header.sPixelFormat.dwFourCC != DX10 
+	){ 
+		goto quick_exit; 
+	}
 
 	/*	OK, validated the header, let's load the image data	*/
 	result_string_pointer = "DDS header loaded and validated";
+
 	const int width = header.dwWidth;
 	const int height = header.dwHeight;
 	int uncompressed = 1 - ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) / DDPF_FOURCC;
@@ -2367,6 +2382,14 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			block_size = 16;
 			break;
 		case ATI2:
+			block_size = 16;
+			internal_format = SOIL_COMPRESSED_RG_RGTC2;
+			break;
+		case DX10:
+			if (dx10_header.dxgiFormat != DXGI_FORMAT_BC5_UNORM) {
+				result_string_pointer = "The DX10 reader only supports BC5 unorm at the moment";
+				return 0;
+			}
 			block_size = 16;
 			internal_format = SOIL_COMPRESSED_RG_RGTC2;
 			break;
