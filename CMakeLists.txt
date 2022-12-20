@@ -65,34 +65,28 @@ if(SOIL2_BUILD_TESTS)
 endif()
 
 install(
-    TARGETS soil2 EXPORT soil2Targets
+    TARGETS soil2 
+    EXPORT soil2_target
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
     PUBLIC_HEADER DESTINATION include
 )
 
-install(
-    EXPORT soil2Targets
-    FILE soil2Targets.cmake
-    NAMESPACE soil2::
-    DESTINATION lib/soil2/cmake
-)
-
-install(TARGETS soil2 EXPORT soil2
-        ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib
-)
 
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-    cmake/soil2Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/soil2Config.cmake
-    INSTALL_DESTINATION lib/soil2/cmake
-)
-install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/soil2Config.cmake
-    DESTINATION lib/soil2/cmake
+    cmake/soil2_config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/soil2_config.cmake
+    INSTALL_DESTINATION share/soil2
 )
 
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/soil2-config.cmake DESTINATION share/soil2)
+
+install(
+    EXPORT soil2_target
+    NAMESPACE soil2::
+    FILE soil2-targets.cmake
+    DESTINATION share/soil2
+)
