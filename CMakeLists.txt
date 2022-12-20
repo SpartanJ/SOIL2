@@ -3,60 +3,43 @@ project(soil2 LANGUAGES CXX C VERSION 1.0.0)
 
 option(SOIL2_BUILD_TESTS "Build tests")
 
-set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
 
-### Library
-
-set(SOIL2_PUBLIC_HEADERS
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
-)
-
-set(SOIL2_PRIVATE_HEADERS
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_DXT.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_helper.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/pkm_helper.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/pvr_helper.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stb_image.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stb_image_write.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_DDS.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_DDS_c.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_ext.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_ext_c.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pkm.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pkm_c.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pvr.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pvr_c.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/wfETC.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/common.hpp
-)
-
-set(SOIL2_SRC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_DXT.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_helper.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/wfETC.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/common.cpp
-)
-
 add_library(soil2
-        ${SOIL2_SRC}
-        ${SOIL2_PUBLIC_HEADERS}
-        ${SOIL2_PRIVATE_HEADERS}
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_DXT.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_helper.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/wfETC.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/common/common.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/pkm_helper.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/pvr_helper.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stb_image.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stb_image_write.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_DDS.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_DDS_c.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_ext.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_ext_c.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pkm.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pkm_c.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pvr.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pvr_c.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/wfETC.h"
 )
-target_compile_options(soil2 PRIVATE "-fPIC")
-target_include_directories( soil2
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/common/>
-        $<INSTALL_INTERFACE:include>
+
+target_compile_options(soil2 PRIVATE
+    $<$<CXX_COMPILER_ID:Clang>:-fPIC>
+    $<$<CXX_COMPILER_ID:GNU>:-fPIC>
 )
+
+target_include_directories(soil2 PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/common/>
+    $<INSTALL_INTERFACE:include>
+)
+
 target_link_libraries(soil2 PRIVATE OpenGL::GL)
 
-set_property(TARGET soil2 PROPERTY PUBLIC_HEADER ${SOIL2_PUBLIC_HEADERS})
-
-### Tests
+set_property(TARGET soil2 PROPERTY PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h)
 
 if(SOIL2_BUILD_TESTS)
     find_package(SDL2 REQUIRED)
@@ -81,32 +64,34 @@ if(SOIL2_BUILD_TESTS)
     )
 endif()
 
-### Install
-
 install(
-    TARGETS soil2 EXPORT soil2Targets
+    TARGETS soil2 
+    EXPORT soil2_target
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
-    PUBLIC_HEADER DESTINATION include
 )
 
-install(
-    EXPORT soil2Targets
-    FILE soil2Targets.cmake
-    NAMESPACE soil2::
-    DESTINATION lib/soil2/cmake
-)
+if(NOT SOIL2_SKIP_HEADERS)
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
+        DESTINATION include/soil2
+    )
+endif()
 
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-    cmake/soil2Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/soil2Config.cmake
-    INSTALL_DESTINATION lib/soil2/cmake
-)
-install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/soil2Config.cmake
-    DESTINATION lib/soil2/cmake
+    cmake/soil2-config.cmake.in
+    soil2-config.cmake
+    INSTALL_DESTINATION share/soil2
 )
 
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/soil2-config.cmake DESTINATION share/soil2)
+
+install(
+    EXPORT soil2_target
+    NAMESPACE soil2::
+    FILE soil2-targets.cmake
+    DESTINATION share/soil2
+)
