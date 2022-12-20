@@ -64,21 +64,26 @@ if(SOIL2_BUILD_TESTS)
     )
 endif()
 
+if(NOT SOIL2_SKIP_HEADERS)
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
+        DESTINATION include
+    )
+endif()
+
 install(
     TARGETS soil2 
     EXPORT soil2_target
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
-    PUBLIC_HEADER DESTINATION include
 )
-
 
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-    cmake/soil2_config.cmake.in
-    soil2_config.cmake
+    cmake/soil2-config.cmake.in
+    soil2-config.cmake
     INSTALL_DESTINATION share/soil2
 )
 
