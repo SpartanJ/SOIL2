@@ -39,7 +39,7 @@ MIT-0 (see LICENSE file)
 * Writeable Image Formats:
     * TGA - Greyscale or RGB or RGBA, uncompressed
     * BMP - RGB, uncompressed
-    * DDS - RGB as DXT1, or RGBA as DXT5
+    * DDS - RGB as BC1, or RGBA as BC3 (see `DDS support` below)
     * PNG
     * JPG
 
@@ -55,7 +55,7 @@ MIT-0 (see LICENSE file)
     * Can convert the RGB to YCoCg color space (useful with DXT5 compression: see [this link](http://www.nvidia.com/object/real-time-ycocg-dxt-compression.html) from NVIDIA)
     * Will automatically downsize a texture if it is larger than GL_MAX_TEXTURE_SIZE
     * Can directly upload DDS files (DXT1/3/5/uncompressed/cubemap, with or without MIPmaps). Note: directly uploading the compressed DDS image will disable the other options (no flipping, no pre-multiplying alpha, no rescaling, no creation of MIPmaps, no auto-downsizing)
-    * Can load rectangluar textures for GUI elements or splash screens (requires GL_ARB/EXT/NV_texture_rectangle)
+    * Can load rectangular textures for GUI elements or splash screens (requires GL_ARB/EXT/NV_texture_rectangle)
 Can decompress images from RAM (e.g. via [PhysicsFS](http://icculus.org/physfs/) or similar) into an OpenGL texture (same features as regular 2D textures, above)
 
 
@@ -71,7 +71,7 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 -------------
 
 * BC1 - Compress, decompress, direct GPU upload (a.k.a. DXT1)
-* BC2 - Compress, decompress, direct GPU upload (a.k.a. DXT2, DXT3)
+* BC2 - decompress, direct GPU upload (a.k.a. DXT2, DXT3)
 * BC3 - Compress, decompress, direct GPU upload (a.k.a. DXT4, DXT5)
 * BC3n - direct GPU upload
 * BC5u - direct GPU upload (a.k.a. 3Dc, ATI2, RGTC2)
