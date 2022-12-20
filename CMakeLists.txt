@@ -64,13 +64,6 @@ if(SOIL2_BUILD_TESTS)
     )
 endif()
 
-if(NOT SOIL2_SKIP_HEADERS)
-    install(FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
-        DESTINATION include
-    )
-endif()
-
 install(
     TARGETS soil2 
     EXPORT soil2_target
@@ -78,6 +71,13 @@ install(
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
 )
+
+if(NOT SOIL2_SKIP_HEADERS)
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
+        DESTINATION include
+    )
+endif()
 
 include(CMakePackageConfigHelpers)
 
