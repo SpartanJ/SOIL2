@@ -75,7 +75,7 @@ install(
 if(NOT SOIL2_SKIP_HEADERS)
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
-        DESTINATION include
+        DESTINATION include/soil2
     )
 endif()
 
