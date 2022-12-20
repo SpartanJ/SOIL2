@@ -28,7 +28,7 @@ MIT-0 (see LICENSE file)
     * PNG - non-interlaced (from stb_image documentation)
     * JPG - JPEG baseline (from stb_image documentation)
     * TGA - greyscale or RGB or RGBA or indexed, uncompressed or RLE
-    * DDS - DXT1/2/3/4/5, 3Dc, uncompressed, cubemaps (can't read 3D DDS files yet)
+    * DDS - BC1/BC2/BC3/BC3n/BC5u, cubemaps (see `DDS support` below)
     * PSD - (from stb_image documentation)
     * HDR - converted to LDR, unless loaded with *HDR* functions (RGBE or RGBdivA or RGBdivA2)
     * GIF
@@ -66,6 +66,15 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 * Tiny
 * Cross platform (Windows, Linux, Mac OS X, FreeBSD, Solaris, Haiku, iOS, Android, and probably any platform with OpenGL support)
 
+
+**DDS support**
+-------------
+
+* BC1 - Compress, decompress, direct GPU upload (a.k.a. DXT1)
+* BC2 - Compress, decompress, direct GPU upload (a.k.a. DXT2, DXT3)
+* BC3 - Compress, decompress, direct GPU upload (a.k.a. DXT4, DXT5)
+* BC3n - direct GPU upload
+* BC5u - direct GPU upload (a.k.a. 3Dc, ATI2, RGTC2)
 
 **Difference between SOIL2 and SOIL:**
 --------------------------------------
