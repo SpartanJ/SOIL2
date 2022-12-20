@@ -78,7 +78,7 @@ include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
     cmake/soil2_config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/soil2_config.cmake
+    soil2_config.cmake
     INSTALL_DESTINATION share/soil2
 )
 
