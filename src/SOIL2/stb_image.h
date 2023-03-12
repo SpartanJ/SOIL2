@@ -543,6 +543,10 @@ STBIDEF int   stbi_zlib_decode_noheader_buffer(char *obuffer, int olen, const ch
 #include "stbi_pkm.h"
 #endif
 
+#ifndef STBI_NO_QOI
+#include "stbi_qoi.h"
+#endif
+
 #ifndef STBI_NO_EXT
 #include "stbi_ext.h"
 #endif
@@ -561,7 +565,7 @@ STBIDEF int   stbi_zlib_decode_noheader_buffer(char *obuffer, int olen, const ch
 #if defined(STBI_ONLY_JPEG) || defined(STBI_ONLY_PNG) || defined(STBI_ONLY_BMP) \
   || defined(STBI_ONLY_TGA) || defined(STBI_ONLY_GIF) || defined(STBI_ONLY_PSD) \
   || defined(STBI_ONLY_HDR) || defined(STBI_ONLY_PIC) || defined(STBI_ONLY_PNM) \
-  || defined(STBI_ONLY_ZLIB)
+  || defined(STBI_ONLY_QOI) || defined(STBI_ONLY_ZLIB)
    #ifndef STBI_ONLY_JPEG
    #define STBI_NO_JPEG
    #endif
@@ -588,6 +592,9 @@ STBIDEF int   stbi_zlib_decode_noheader_buffer(char *obuffer, int olen, const ch
    #endif
    #ifndef STBI_ONLY_PNM
    #define STBI_NO_PNM
+   #endif
+   #ifndef STBI_ONLY_QOI
+   #define STBI_NO_QOI
    #endif
 #endif
 
@@ -982,6 +989,12 @@ static void    *stbi__pkm_load(stbi__context *s, int *x, int *y, int *comp, int 
 static int      stbi__pkm_info(stbi__context *s, int *x, int *y, int *comp);
 #endif
 
+#ifndef STBI_NO_QOI
+static int      stbi__qoi_test(stbi__context *s);
+static void    *stbi__qoi_load(stbi__context *s, int *x, int *y, int *comp, int req_comp, stbi__result_info *ri);
+static int      stbi__qoi_info(stbi__context *s, int *x, int *y, int *comp);
+#endif
+
 static
 #ifdef STBI_THREAD_LOCAL
 STBI_THREAD_LOCAL
@@ -1179,6 +1192,9 @@ static void *stbi__load_main(stbi__context *s, int *x, int *y, int *comp, int re
    #endif
    #ifndef STBI_NO_PNM
    if (stbi__pnm_test(s))  return stbi__pnm_load(s,x,y,comp,req_comp, ri);
+   #endif
+   #ifndef STBI_NO_QOI
+   if (stbi__qoi_test(s))  return stbi__qoi_load(s,x,y,comp,req_comp, ri);
    #endif
 
    #ifndef STBI_NO_HDR
@@ -1708,7 +1724,7 @@ static int stbi__get16be(stbi__context *s)
 }
 #endif
 
-#if defined(STBI_NO_PNG) && defined(STBI_NO_PSD) && defined(STBI_NO_PIC)
+#if defined(STBI_NO_PNG) && defined(STBI_NO_PSD) && defined(STBI_NO_PIC) && defined(STBI_NO_QOI)
 // nothing
 #else
 static stbi__uint32 stbi__get32be(stbi__context *s)
@@ -7614,6 +7630,10 @@ static int stbi__info_main(stbi__context *s, int *x, int *y, int *comp)
    if (stbi__pkm_info(s, x, y, comp))  return 1;
    #endif
 
+   #ifndef STBI_NO_QOI
+   if (stbi__qoi_info(s, x, y, comp))  return 1;
+   #endif
+
    // test tga last because it's a crappy test!
    #ifndef STBI_NO_TGA
    if (stbi__tga_info(s, x, y, comp))
@@ -7727,6 +7747,12 @@ STBIDEF int stbi_is_16_bit_from_callbacks(stbi_io_callbacks const *c, void *user
 
 #ifndef STBI_NO_EXT
 #include "stbi_ext_c.h"
+#endif
+
+// Quite OK Image loader
+// by Jack Bendtsen
+#ifndef STBI_NO_QOI
+#include "stbi_qoi_c.h"
 #endif
 
 #endif // STB_IMAGE_IMPLEMENTATION

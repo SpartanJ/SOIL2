@@ -30,6 +30,7 @@ MIT-0 (see LICENSE file)
     * TGA - greyscale or RGB or RGBA or indexed, uncompressed or RLE
     * DDS - BC1/BC2/BC3/BC3n/BC5u, cubemaps (see `DDS support` below)
     * PSD - (from stb_image documentation)
+    * [QOI](https://github.com/phoboslab/qoi)
     * HDR - converted to LDR, unless loaded with *HDR* functions (RGBE or RGBdivA or RGBdivA2)
     * GIF
     * PIC
@@ -42,6 +43,7 @@ MIT-0 (see LICENSE file)
     * DDS - RGB as BC1, or RGBA as BC3 (see `DDS support` below)
     * PNG
     * JPG
+    * [QOI](https://github.com/phoboslab/qoi)
 
 
 * Can load an image file directly into a 2D OpenGL texture, optionally performing the following functions:

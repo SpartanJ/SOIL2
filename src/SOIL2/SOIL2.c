@@ -1,6 +1,6 @@
 /*
  	Fork by Martin Lucas Golini
- 	 
+
  	Original author
 	Jonathan Dummer
 	2007-07-26-10.36
@@ -1993,6 +1993,10 @@ int
 	if ( image_type == SOIL_SAVE_TYPE_JPG )
 	{
 		save_result = stbi_write_jpg( filename, width, height, channels, (const void*)data, quality );
+	} else
+	if ( image_type == SOIL_SAVE_TYPE_QOI )
+	{
+		save_result = stbi_write_qoi( filename, width, height, channels, (const void*)data );
 	}
 	else
 	{
@@ -2112,11 +2116,11 @@ SOIL_write_image_to_memory_quality
 	else if (image_type == SOIL_SAVE_TYPE_DDS)
 	{
 		save_result = 0; // not supported thru stbi
-	} 
+	}
 	else if (image_type == SOIL_SAVE_TYPE_PNG)
 	{
 		save_result = stbi_write_png_to_func(write_to_memory, &context, width, height, channels, (const unsigned char*)data, 0);
-	} 
+	}
 	else if (image_type == SOIL_SAVE_TYPE_JPG)
 	{
 		save_result = stbi_write_jpg_to_func(write_to_memory, &context, width, height, channels, (const unsigned char*)data, quality);
@@ -2145,7 +2149,7 @@ SOIL_write_image_to_memory_quality
 	{
 		result_string_pointer = "Image written";
 	}
-	
+
 	return imageMemory;
 }
 
@@ -2229,7 +2233,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	// Try reading in the header
 	DDS_header header;
 	memcpy( (void *)( &header ), (const void *)buffer, sizeof( DDS_header ) );
-	
+
 	buffer_index += sizeof(DDS_header);
 	/*	guilty until proven innocent	*/
 	result_string_pointer = "Failed to read a known DDS header";
@@ -2268,14 +2272,14 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	}
 
 	// make sure it is a type we can upload
-	if ((header.sPixelFormat.dwFlags & DDPF_FOURCC) 
-		&& header.sPixelFormat.dwFourCC != DXT1 
-		&& header.sPixelFormat.dwFourCC != DXT3 
-		&& header.sPixelFormat.dwFourCC != DXT5 
-		&& header.sPixelFormat.dwFourCC != ATI2 
-		&& header.sPixelFormat.dwFourCC != DX10 
-	){ 
-		goto quick_exit; 
+	if ((header.sPixelFormat.dwFlags & DDPF_FOURCC)
+		&& header.sPixelFormat.dwFourCC != DXT1
+		&& header.sPixelFormat.dwFourCC != DXT3
+		&& header.sPixelFormat.dwFourCC != DXT5
+		&& header.sPixelFormat.dwFourCC != ATI2
+		&& header.sPixelFormat.dwFourCC != DX10
+	){
+		goto quick_exit;
 	}
 
 	/*	OK, validated the header, let's load the image data	*/
@@ -3180,13 +3184,13 @@ static P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC get_glCompressedTexImage2D_addr()
 {
 	/*	and find the address of the extension function	*/
 	P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr = NULL;
-	
+
 #if defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX ) || defined( SOIL_X11_PLATFORM )
 	ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)SOIL_GL_GetProcAddress( "glCompressedTexImage2D" );
 #else
 	ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)&glCompressedTexImage2D;
 #endif
-	
+
 	return ext_addr;
 }
 
@@ -3237,7 +3241,7 @@ int query_DXT_capability( void )
 
 int query_3Dc_capability(void) {
 	/*	check for the capability	*/
-	if (has_3Dc_capability == SOIL_CAPABILITY_UNKNOWN) 
+	if (has_3Dc_capability == SOIL_CAPABILITY_UNKNOWN)
 	{
 		/*	we haven't yet checked for the capability, do so	*/
 		if (0 == SOIL_GL_ExtensionSupported(
@@ -3249,12 +3253,12 @@ int query_3Dc_capability(void) {
 			) {
 			/*	not there, flag the failure	*/
 			has_3Dc_capability = SOIL_CAPABILITY_NONE;
-		} else 
+		} else
 		{
 			P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr = get_glCompressedTexImage2D_addr();
 
 			/*	Flag it so no checks needed later	*/
-			if (NULL == ext_addr) 
+			if (NULL == ext_addr)
 			{
 				/*	hmm, not good!!  This should not happen, but does on my
 					laptop's VIA chipset.  The GL_EXT_texture_compression_s3tc
@@ -3263,7 +3267,7 @@ int query_3Dc_capability(void) {
 					conversion, but I can't use my own routines or load DDS files
 					from disk and upload them directly [8^(	*/
 				has_3Dc_capability = SOIL_CAPABILITY_NONE;
-			} else 
+			} else
 			{
 				/*	all's well!	*/
 				soilGlCompressedTexImage2D = ext_addr;
@@ -3291,7 +3295,7 @@ int query_PVR_capability( void )
 			if ( NULL == soilGlCompressedTexImage2D ) {
 				soilGlCompressedTexImage2D = get_glCompressedTexImage2D_addr();
 			}
-			
+
 			/*	it's there!	*/
 			has_PVR_capability = SOIL_CAPABILITY_PRESENT;
 		}

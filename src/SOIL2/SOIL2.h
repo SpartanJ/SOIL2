@@ -2,7 +2,7 @@
 	@mainpage SOIL2
 
 	Fork by Martin Lucas Golini
-	
+
 	Original author Jonathan Dummer
 	2007-07-26-10.36
 
@@ -25,6 +25,7 @@
 	- DDS		load & save
 	- PNG		load & save
 	- JPG		load & save
+	- QOI		load & save
 	- PSD		load
 	- HDR		load
 	- PIC		load
@@ -142,7 +143,8 @@ enum
 	SOIL_SAVE_TYPE_BMP = 1,
 	SOIL_SAVE_TYPE_PNG = 2,
 	SOIL_SAVE_TYPE_DDS = 3,
-	SOIL_SAVE_TYPE_JPG = 4
+	SOIL_SAVE_TYPE_JPG = 4,
+	SOIL_SAVE_TYPE_QOI = 5
 };
 
 /**
