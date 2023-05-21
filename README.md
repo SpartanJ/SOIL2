@@ -116,11 +116,11 @@ To generate project files you will need to [download and install](https://premak
 
 Then you can generate the static library for your platform just going to the project directory where the premake4.lua file is located and then execute:
 
-`premake5 gmake2` to generate project Makefiles, then `cd make/*YOURPLATFORM*/`, and finally `make` or `make config=release` ( it will generate the static lib, the shared lib and the test application ).
+`premake5 gmake2` to generate project Makefiles, then `cd make/*YOURPLATFORM*/`, and finally `make` or `make config=release_x86_64` ( it will generate the static lib, the shared lib and the test application ).
 
 or
 
-`premake5 vs2022` to generate Visual Studio 2010 project.
+`premake5 vs2022` to generate Visual Studio 2022 project.
 
 or
 
