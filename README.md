@@ -116,15 +116,15 @@ To generate project files you will need to [download and install](https://premak
 
 Then you can generate the static library for your platform just going to the project directory where the premake4.lua file is located and then execute:
 
-`premake4 gmake` to generate project Makefiles, then `cd make/*YOURPLATFORM*/`, and finally `make` or `make config=release` ( it will generate the static lib, the shared lib and the test application ).
+`premake5 gmake2` to generate project Makefiles, then `cd make/*YOURPLATFORM*/`, and finally `make` or `make config=release` ( it will generate the static lib, the shared lib and the test application ).
 
 or
 
-`premake4 vs2010` to generate Visual Studio 2010 project.
+`premake5 vs2022` to generate Visual Studio 2010 project.
 
 or
 
-`premake4 xcode4` to generate Xcode 4 project.
+`premake5 xcode4` to generate Xcode 4 project.
 
 The static library will be located in `lib/*YOURPLATFORM*/` folder project subdirectory.
 The test will be located in `bin`, you need [SDL2](http://libsdl.org/) installed to be able to build the test.
