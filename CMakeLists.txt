@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.13)
 project(soil2 LANGUAGES CXX C VERSION 1.0.0)
 
 option(SOIL2_BUILD_TESTS "Build tests")
@@ -39,8 +39,6 @@ target_include_directories(soil2 PUBLIC
 
 target_link_libraries(soil2 PRIVATE OpenGL::GL)
 
-set_property(TARGET soil2 PROPERTY PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h)
-
 if(SOIL2_BUILD_TESTS)
     find_package(SDL2 REQUIRED)
 
@@ -73,9 +71,10 @@ install(
 )
 
 if(NOT SOIL2_SKIP_HEADERS)
+    set_property(TARGET soil2 PROPERTY PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h)
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
-        DESTINATION include/soil2
+        PUBLIC_HEADER DESTINATION include/soil2
     )
 endif()
 
