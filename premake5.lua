@@ -78,6 +78,7 @@ workspace "SOIL2"
 
 	filter { "system:macosx", "not action:xcode*", "not options:use-frameworks" }
 		libdirs { "/opt/homebrew/lib" }
+		incdirs { "/opt/homebrew/include" }
 
 	filter "platforms:x86"
 		architecture "x86"
@@ -134,8 +135,8 @@ workspace "SOIL2"
 
 		filter "system:macosx"
 			links { "OpenGL.framework", "CoreFoundation.framework" }
-			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
-			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
+			buildoptions {"-F /Library/Frameworks"}
+			linkoptions {"-F /Library/Frameworks"}
 			defines { "GL_SILENCE_DEPRECATION" }
 
 		filter "system:haiku"
@@ -175,8 +176,8 @@ workspace "SOIL2"
 
 		filter "system:macosx"
 			links { "OpenGL.framework", "CoreFoundation.framework", get_backend_link_name("SDL2") }
-			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
-			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
+			buildoptions {"-F /Library/Frameworks"}
+			linkoptions {"-F /Library/Frameworks"}
 			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
 			defines { "GL_SILENCE_DEPRECATION" }
 			if not _OPTIONS["use-frameworks"] then
@@ -232,8 +233,8 @@ workspace "SOIL2"
 
 		filter "system:macosx"
 			links { "OpenGL.framework", "CoreFoundation.framework", get_backend_link_name("SDL2") }
-			buildoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
-			linkoptions {"-F /Library/Frameworks", "-F ~/Library/Frameworks"}
+			buildoptions {"-F /Library/Frameworks"}
+			linkoptions {"-F /Library/Frameworks"}
 			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
 			defines { "GL_SILENCE_DEPRECATION" }
 			if not _OPTIONS["use-frameworks"] then
