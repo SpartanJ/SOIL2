@@ -15,7 +15,7 @@ end
 
 function incdirs( dirs )
 	if is_xcode() then
-		sysincludedirs { dirs }
+		externalincludedirs { dirs }
 	end
 	includedirs { dirs }
 end
