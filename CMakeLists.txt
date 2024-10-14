@@ -63,7 +63,7 @@ if(SOIL2_BUILD_TESTS)
 endif()
 
 install(
-    TARGETS soil2 
+    TARGETS soil2
     EXPORT soil2_target
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
@@ -74,7 +74,7 @@ if(NOT SOIL2_SKIP_HEADERS)
     set_property(TARGET soil2 PROPERTY PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h)
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
-        PUBLIC_HEADER DESTINATION include/soil2
+        DESTINATION include/soil2
     )
 endif()
 
