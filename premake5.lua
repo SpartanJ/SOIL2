@@ -44,8 +44,8 @@ function get_backend_link_name( name )
 	return name
 end
 
-remote_sdl2_version = "SDL2-2.0.20"
-remote_sdl2_devel_vc_url = "https://www.libsdl.org/release/SDL2-devel-2.0.20-VC.zip"
+remote_sdl2_version = "SDL2-2.30.8"
+remote_sdl2_devel_vc_url = "https://www.libsdl.org/release/SDL2-devel-2.30.8-VC.zip"
 
 function download_and_extract_dependencies()
 	if _OPTIONS["windows-vc-build"] and not os.isdir("./" .. remote_sdl2_version) then
@@ -75,6 +75,9 @@ workspace "SOIL2"
 	platforms { "x86_64", "x86" }
 	download_and_extract_dependencies()
 	objdir("obj/" .. os.target() .. "/")
+
+	filter { "system:macosx", "not action:xcode*", "not options:use-frameworks" }
+		libdirs { "/opt/homebrew/lib" }
 
 	filter "platforms:x86"
 		architecture "x86"

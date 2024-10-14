@@ -9,7 +9,7 @@ projects/
 *.DS_Store
 bin/SDL2.dll
 *.dll
-SDL2-2.0.20*
+SDL2-2.*
 /CMakeFiles
 *.a
 *.cmake

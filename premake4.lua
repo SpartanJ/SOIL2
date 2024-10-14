@@ -111,6 +111,10 @@ solution "SOIL2"
 	configurations { "debug", "release" }
 	objdir("obj/" .. os.get() .. "/")
 
+	if os.is_real("macosx") then
+		libdirs { "/opt/homebrew/lib" }
+	end
+
 	project "soil2-static-lib"
 		kind "StaticLib"
 		language "C"
