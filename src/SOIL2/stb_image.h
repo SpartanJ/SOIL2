@@ -6836,7 +6836,7 @@ static stbi_uc *stbi__process_gif_raster(stbi__context *s, stbi__gif *g)
 
 // this function is designed to support animated gifs, although stb_image doesn't support it
 // two back is the image from two frames ago, used for a very specific disposal format
-static stbi_uc *stbi__gif_load_next(stbi__context *s, stbi__gif *g, int *comp, int req_comp, stbi_uc *two_back)
+static stbi_uc *stbi__gif_load_next(stbi__context *s, stbi__gif *g, int *comp, int req_comp, stbi_uc *last_non_disposable)
 {
    int dispose;
    int first_frame;
@@ -6869,14 +6869,14 @@ static stbi_uc *stbi__gif_load_next(stbi__context *s, stbi__gif *g, int *comp, i
       dispose = (g->eflags & 0x1C) >> 2;
       pcount = g->w * g->h;
 
-      if ((dispose == 3) && (two_back == 0)) {
+      if ((dispose == 3) && (last_non_disposable == 0)) {
          dispose = 2; // if I don't have an image to revert back to, default to the old background
       }
 
       if (dispose == 3) { // use previous graphic
          for (pi = 0; pi < pcount; ++pi) {
             if (g->history[pi]) {
-               memcpy( &g->out[pi * 4], &two_back[pi * 4], 4 );
+               memcpy( &g->out[pi * 4], &last_non_disposable[pi * 4], 4 );
             }
          }
          // background is what out is after the undoing of the previou frame;
@@ -7026,7 +7026,7 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
       int layers = 0;
       stbi_uc *u = 0;
       stbi_uc *out = 0;
-      stbi_uc *two_back = 0;
+      stbi_uc *last_non_disposable = 0;
       stbi__gif g;
       int stride;
       int out_size = 0;
@@ -7041,7 +7041,7 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
       }
 
       do {
-         u = stbi__gif_load_next(s, &g, comp, req_comp, two_back);
+         u = stbi__gif_load_next(s, &g, comp, req_comp, last_non_disposable);
          if (u == (stbi_uc *) s) u = 0;  // end of animated gif marker
 
          if (u) {
@@ -7097,8 +7097,8 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
                }
             }
             memcpy( out + ((layers - 1) * stride), u, stride );
-            if (layers >= 2) {
-               two_back = out + ((layers - 2) * stride);
+            if (((g.eflags & 0x1C) >> 2) <= 1) {
+               last_non_disposable = out;
             }
 
             if (delays) {
