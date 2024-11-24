@@ -1332,7 +1332,7 @@ static unsigned char *stbi__load_and_postprocess_8bit(stbi__context *s, int *x, 
 
    // @TODO: move stbi__convert_format to here
 
-   if (stbi__vertically_flip_on_load) {
+   if (stbi__vertically_flip_on_load && result) {
       int channels = req_comp ? req_comp : *comp;
       stbi__vertical_flip(result, *x, *y, channels * sizeof(stbi_uc));
    }
@@ -1359,7 +1359,7 @@ static stbi__uint16 *stbi__load_and_postprocess_16bit(stbi__context *s, int *x, 
    // @TODO: move stbi__convert_format16 to here
    // @TODO: special case RGB-to-Y (and RGBA-to-YA) for 8-bit-to-16-bit case to keep more precision
 
-   if (stbi__vertically_flip_on_load) {
+   if (stbi__vertically_flip_on_load && result) {
       int channels = req_comp ? req_comp : *comp;
       stbi__vertical_flip(result, *x, *y, channels * sizeof(stbi__uint16));
    }
@@ -1505,8 +1505,9 @@ STBIDEF stbi_uc *stbi_load_gif_from_memory(stbi_uc const *buffer, int len, int *
    stbi__start_mem(&s,buffer,len);
 
    result = (unsigned char*) stbi__load_gif_main(&s, delays, x, y, z, comp, req_comp);
-   if (stbi__vertically_flip_on_load) {
-      stbi__vertical_flip_slices( result, *x, *y, *z, *comp );
+   if (stbi__vertically_flip_on_load && result) {
+      int channels = req_comp ? req_comp : *comp;
+      stbi__vertical_flip_slices( result, *x, *y, *z, channels );
    }
 
    return result;
@@ -3494,7 +3495,7 @@ static int stbi__decode_jpeg_image(stbi__jpeg *j)
          if (NL != j->s->img_y) return stbi__err("bad DNL height", "Corrupt JPEG");
          m = stbi__get_marker(j);
       } else {
-         if (!stbi__process_marker(j, m)) return 1;
+         if (!stbi__process_marker(j, m)) return stbi__err("bad marker","Corrupt JPEG");
          m = stbi__get_marker(j);
       }
    }
@@ -5991,7 +5992,10 @@ static void *stbi__tga_load(stbi__context *s, int *x, int *y, int *comp, int req
       for (i=0; i < tga_height; ++i) {
          int row = tga_inverted ? tga_height -i - 1 : i;
          stbi_uc *tga_row = tga_data + row*tga_width*tga_comp;
-         stbi__getn(s, tga_row, tga_width * tga_comp);
+         if(!stbi__getn(s, tga_row, tga_width * tga_comp)) {
+            STBI_FREE(tga_data);
+            return stbi__errpuc("bad palette", "Corrupt TGA");
+         }
       }
    } else  {
       //   do I need to load a palette?
@@ -6585,7 +6589,7 @@ static void *stbi__pic_load(stbi__context *s,int *px,int *py,int *comp,int req_c
 
    if (!stbi__pic_load_core(s,x,y,comp, result)) {
       STBI_FREE(result);
-      result=0;
+      return 0;
    }
    *px = x;
    *py = y;
@@ -6875,7 +6879,6 @@ static stbi_uc *stbi__gif_load_next(stbi__context *s, stbi__gif *g, int *comp, i
                memcpy( &g->out[pi * 4], &two_back[pi * 4], 4 );
             }
          }
-
          // background is what out is after the undoing of the previou frame;
          memcpy( g->background, g->out, 4 * g->w * g->h );
       } else if (dispose == 2) {
@@ -6891,9 +6894,6 @@ static stbi_uc *stbi__gif_load_next(stbi__context *s, stbi__gif *g, int *comp, i
          // 1: do not dispose
          // 0:  not specified.
       }
-
-      // background is what out is after the undoing of the previou frame;
-      memcpy( g->background, g->out, 4 * g->w * g->h );
    }
 
    // clear my history;
@@ -6952,7 +6952,7 @@ static stbi_uc *stbi__gif_load_next(stbi__context *s, stbi__gif *g, int *comp, i
 
             // if this was the first frame,
             pcount = g->w * g->h;
-            if (first_frame && (g->bgindex > 0)) {
+            if (first_frame && (g->bgindex > 0) && (g->eflags & 0x01) == 0) {
                // if first frame, any pixel not drawn to gets the background color
                for (pi = 0; pi < pcount; ++pi) {
                   if (g->history[pi] == 0) {
@@ -7051,9 +7051,20 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
             stride = g.w * g.h * 4;
 
             if (out) {
+               if (stride == 0) {
+                  void *ret = stbi__load_gif_main_outofmem(&g, out, delays);
+                  return ret;
+               }
+               if (!stbi__mul2sizes_valid(layers, stride)) {
+                  void *ret = stbi__load_gif_main_outofmem(&g, out, delays);
+                  return ret;
+               }
                void *tmp = (stbi_uc*) STBI_REALLOC_SIZED( out, out_size, layers * stride );
-               if (!tmp)
-                  return stbi__load_gif_main_outofmem(&g, out, delays);
+               if (!tmp) {
+                  void *ret = stbi__load_gif_main_outofmem(&g, out, delays);
+                  if (delays && *delays) *delays = 0;
+                  return ret;
+               }
                else {
                    out = (stbi_uc*) tmp;
                    out_size = layers * stride;
@@ -7067,9 +7078,16 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
                   delays_size = layers * sizeof(int);
                }
             } else {
+               if (!stbi__mul2sizes_valid(layers, stride)) {
+                  void *ret = stbi__load_gif_main_outofmem(&g, out, delays);
+                  return ret;
+               }
                out = (stbi_uc*)stbi__malloc( layers * stride );
-               if (!out)
-                  return stbi__load_gif_main_outofmem(&g, out, delays);
+               if (!out) {
+                  void *ret = stbi__load_gif_main_outofmem(&g, out, delays);
+                  if (delays && *delays) *delays = 0;
+                  return ret;
+               }
                out_size = layers * stride;
                if (delays) {
                   *delays = (int*) stbi__malloc( layers * sizeof(int) );
@@ -7279,7 +7297,10 @@ static float *stbi__hdr_load(stbi__context *s, int *x, int *y, int *comp, int re
          for (i=0; i < width; ++i) {
             stbi_uc rgbe[4];
            main_decode_loop:
-            stbi__getn(s, rgbe, 4);
+            if (!stbi__getn(s, rgbe, 4)) {
+               STBI_FREE(hdr_data);
+               return stbi__errpf("invalid decoded scanline length", "corrupt HDR");
+            }
             stbi__hdr_convert(hdr_data + j * width * req_comp + i * req_comp, rgbe, req_comp);
          }
       }
