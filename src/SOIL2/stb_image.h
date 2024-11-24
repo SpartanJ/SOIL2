@@ -6875,6 +6875,9 @@ static stbi_uc *stbi__gif_load_next(stbi__context *s, stbi__gif *g, int *comp, i
                memcpy( &g->out[pi * 4], &two_back[pi * 4], 4 );
             }
          }
+
+         // background is what out is after the undoing of the previou frame;
+         memcpy( g->background, g->out, 4 * g->w * g->h );
       } else if (dispose == 2) {
          // restore what was changed last frame to background before that frame;
          for (pi = 0; pi < pcount; ++pi) {
@@ -7077,7 +7080,7 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
             }
             memcpy( out + ((layers - 1) * stride), u, stride );
             if (layers >= 2) {
-               two_back = out - 2 * stride;
+               two_back = out + ((layers - 2) * stride);
             }
 
             if (delays) {
