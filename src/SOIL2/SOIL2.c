@@ -2125,6 +2125,10 @@ SOIL_write_image_to_memory_quality
 	{
 		save_result = stbi_write_jpg_to_func(write_to_memory, &context, width, height, channels, (const unsigned char*)data, quality);
 	}
+	else if (image_type == SOIL_SAVE_TYPE_QOI)
+	{
+		save_result = stbi_write_qoi_to_func(write_to_memory, &context, width, height, channels, (const unsigned char*)data);
+	}
 	else
 	{
 		save_result = 0;
