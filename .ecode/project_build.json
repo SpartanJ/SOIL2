@@ -1,0 +1,110 @@
+{
+  "SOIL2-premake4": {
+    "build": [
+      {
+        "args": "gmake",
+        "command": "premake4",
+        "working_dir": ""
+      },
+      {
+        "args": "-C make/${os} -j${nproc} config=${build_type}",
+        "command": "make",
+        "working_dir": ""
+      }
+    ],
+    "build_types": [
+      "debug",
+      "release"
+    ],
+    "clean": [
+      {
+        "args": "",
+        "command": "",
+        "working_dir": ""
+      }
+    ],
+    "config": {
+      "clear_sys_env": false
+    },
+    "os": [
+      "freebsd",
+      "haiku",
+      "linux",
+      "macos",
+      "windows"
+    ],
+    "output_parser": {
+      "config": {
+        "relative_file_paths": true
+      }
+    },
+    "run": [
+      {
+        "args": "",
+        "command": "${project_root}/bin/soil2-test-debug",
+        "name": "soil2-test-debug",
+        "working_dir": "${project_root}/bin/"
+      },
+      {
+        "args": "",
+        "command": "${project_root}/bin/soil2-test",
+        "name": "soil2-test",
+        "working_dir": "${project_root}/bin/"
+      }
+    ]
+  },
+  "SOIL2-premake5": {
+    "build": [
+      {
+        "args": "gmake",
+        "command": "premake5",
+        "working_dir": ""
+      },
+      {
+        "args": "-C make/${os} -j${nproc} config=${build_type}_${arch}",
+        "command": "make",
+        "working_dir": ""
+      }
+    ],
+    "build_types": [
+      "debug",
+      "release"
+    ],
+    "clean": [
+      {
+        "args": "",
+        "command": "",
+        "working_dir": ""
+      }
+    ],
+    "config": {
+      "clear_sys_env": false
+    },
+    "os": [
+      "freebsd",
+      "haiku",
+      "linux",
+      "macos",
+      "windows"
+    ],
+    "output_parser": {
+      "config": {
+        "relative_file_paths": true
+      }
+    },
+    "run": [
+      {
+        "args": "",
+        "command": "${project_root}/bin/soil2-test-debug",
+        "name": "soil2-test-debug",
+        "working_dir": "${project_root}/bin/"
+      },
+      {
+        "args": "",
+        "command": "${project_root}/bin/soil2-test",
+        "name": "soil2-test",
+        "working_dir": "${project_root}/bin/"
+      }
+    ]
+  }
+}
