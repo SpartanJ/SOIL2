@@ -18,8 +18,8 @@
     ],
     "clean": [
       {
-        "args": "",
-        "command": "",
+        "args": "-C make/${os} clean config=${build_type}",
+        "command": "make",
         "working_dir": ""
       }
     ],
