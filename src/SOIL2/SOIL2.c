@@ -29,7 +29,11 @@
 	#endif
 #elif defined( __ANDROID__ ) || defined( ANDROID )
 	#define SOIL_PLATFORM_ANDROID
-#elif ( defined ( linux ) || defined( __linux__ ) || defined( __FreeBSD__ ) || defined(__OpenBSD__) || defined( __NetBSD__ ) || defined( __DragonFly__ ) || defined( __SVR4 ) )
+#elif !defined( SOIL_GLES2 ) && !defined( SOIL_GLES1 ) && !defined( SOIL_NO_X11 ) && \
+	!defined( SOIL_EGL ) &&                                                          \
+	( defined( linux ) || defined( __linux__ ) || defined( __FreeBSD__ ) ||          \
+	  defined( __OpenBSD__ ) || defined( __NetBSD__ ) || defined( __DragonFly__ ) || \
+	  defined( __SVR4 ) )
 	#define SOIL_X11_PLATFORM
 #endif
 
@@ -37,8 +41,9 @@
 	#define SOIL_GLES2
 #endif
 
-#if ( defined( SOIL_GLES2 ) || defined( SOIL_GLES1 ) ) && !defined( SOIL_NO_EGL ) && !defined( SOIL_PLATFORM_IOS )
-	#include <EGL/egl.h>
+#if ( defined( SOIL_GLES2 ) || defined( SOIL_GLES1 ) || defined( SOIL_EGL ) ) && \
+	!defined( SOIL_NO_EGL ) && !defined( SOIL_PLATFORM_IOS )
+#include <EGL/egl.h>
 #endif
 
 #if defined( SOIL_GLES2 )
@@ -259,7 +264,7 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 
 #if defined( SOIL_PLATFORM_IOS )
 	func = dlsym( RTLD_DEFAULT, proc );
-#elif defined( SOIL_GLES2 ) || defined( SOIL_GLES1 )
+#elif defined( SOIL_GLES2 ) || defined( SOIL_GLES1 ) || defined( SOIL_EGL )
 	#ifndef SOIL_NO_EGL
 		func = eglGetProcAddress( proc );
 	#else
@@ -3410,7 +3415,7 @@ int query_gen_mipmap_capability( void )
 				ext_addr = (P_SOIL_GLGENERATEMIPMAPPROC)SOIL_GL_GetProcAddress("glGenerateMipmap");
 			}
 
-			#elif defined( SOIL_GLES2 )
+			#elif defined( SOIL_GLES2 ) || defined( SOIL_EGL )
 				ext_addr = 	&glGenerateMipmap;
 			#else /** SOIL_GLES1 */
 				ext_addr = &glGenerateMipmapOES;
