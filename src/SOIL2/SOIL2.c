@@ -1365,7 +1365,7 @@ void check_for_GL_errors( const char *calling_location )
 	}
 }
 #else
-void check_for_GL_errors( const char * )
+void check_for_GL_errors( const char *calling_location )
 {
 	/*	no check for errors	*/
 }
