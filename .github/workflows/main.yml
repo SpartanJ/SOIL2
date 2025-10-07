@@ -58,4 +58,4 @@ jobs:
     - name: Build
       shell: cmd
       run: |
-        "%MSBUILD_PATH%\MSBuild.exe" .\make\windows\SOIL2.sln -m
+        "%MSBUILD_PATH%\MSBuild.exe" .\make\windows\SOIL2.sln -m /p:Platform="x64" /p:Configuration="release"
