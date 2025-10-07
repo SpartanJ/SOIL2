@@ -38,7 +38,8 @@ jobs:
     - name: Build
       run: |
         premake5 gmake2
-        make -C make/macosx/ -j$(sysctl -n hw.ncpu) all
+        make -C make/macosx/ -j$(sysctl -n hw.ncpu) config=release_arm64
+        make -C make/macosx/ -j$(sysctl -n hw.ncpu) config=debug_arm64
   Windows:
     runs-on: windows-latest
     env:
