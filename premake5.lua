@@ -52,7 +52,7 @@ function download_and_extract_dependencies()
 		print("Downloading: " .. remote_sdl2_devel_vc_url)
 		local dest_dir = "./"
 		local local_file = dest_dir .. remote_sdl2_version .. ".zip"
-		local result_str, response_code = http.download(remote_sdl2_devel_vc_url, local_file)
+		local _, response_code = http.download(remote_sdl2_devel_vc_url, local_file)
 		if response_code == 200 then
 			print("Downloaded successfully to: " .. local_file)
 			zip.extract(local_file, dest_dir)
@@ -72,7 +72,7 @@ workspace "SOIL2"
 	location("./make/" .. os.target() .. "/")
 	targetdir("./bin")
 	configurations { "debug", "release" }
-	platforms { "x86_64", "x86" }
+	platforms { "x86_64", "x86", "arm64" }
 	download_and_extract_dependencies()
 	objdir("obj/" .. os.target() .. "/")
 
@@ -85,6 +85,15 @@ workspace "SOIL2"
 
 	filter "platforms:x86_64"
 		architecture "x86_64"
+		vectorextensions "SSE2"
+
+	filter "platforms:arm64"
+		architecture "ARM64"
+
+	filter { "platforms:arm64", "system:macosx" }
+		architecture "ARM64"
+		buildoptions { "-arch arm64" }
+		linkoptions { "-arch arm64" }
 
 	project "soil2-static-lib"
 		kind "StaticLib"
@@ -124,7 +133,6 @@ workspace "SOIL2"
 
 		filter { "system:windows", "action:not vs*" }
 			links { "mingw32" }
-			vectorextensions "SSE2"
 			defines { "STBI_MINGW_ENABLE_SSE2" }
 
 		filter "system:windows"
@@ -192,7 +200,6 @@ workspace "SOIL2"
 
 		filter "action:not vs*"
 			buildoptions { "-Wall" }
-			vectorextensions "SSE2"
 			defines { "STBI_MINGW_ENABLE_SSE2" }
 
 		filter "configurations:debug"
@@ -222,7 +229,6 @@ workspace "SOIL2"
 
 		filter { "system:windows", "action:not vs*" }
 			links { "mingw32" }
-			vectorextensions "SSE2"
 			defines { "STBI_MINGW_ENABLE_SSE2" }
 
 		filter "system:windows"
