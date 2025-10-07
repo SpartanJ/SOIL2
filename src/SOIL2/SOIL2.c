@@ -29,7 +29,11 @@
 	#endif
 #elif defined( __ANDROID__ ) || defined( ANDROID )
 	#define SOIL_PLATFORM_ANDROID
-#elif ( defined ( linux ) || defined( __linux__ ) || defined( __FreeBSD__ ) || defined(__OpenBSD__) || defined( __NetBSD__ ) || defined( __DragonFly__ ) || defined( __SVR4 ) )
+#elif !defined( SOIL_GLES2 ) && !defined( SOIL_GLES1 ) && !defined( SOIL_NO_X11 ) && \
+	!defined( SOIL_EGL ) &&                                                          \
+	( defined( linux ) || defined( __linux__ ) || defined( __FreeBSD__ ) ||          \
+	  defined( __OpenBSD__ ) || defined( __NetBSD__ ) || defined( __DragonFly__ ) || \
+	  defined( __SVR4 ) )
 	#define SOIL_X11_PLATFORM
 #endif
 
@@ -37,8 +41,9 @@
 	#define SOIL_GLES2
 #endif
 
-#if ( defined( SOIL_GLES2 ) || defined( SOIL_GLES1 ) ) && !defined( SOIL_NO_EGL ) && !defined( SOIL_PLATFORM_IOS )
-	#include <EGL/egl.h>
+#if ( defined( SOIL_GLES2 ) || defined( SOIL_GLES1 ) || defined( SOIL_EGL ) ) && \
+	!defined( SOIL_NO_EGL ) && !defined( SOIL_PLATFORM_IOS )
+#include <EGL/egl.h>
 #endif
 
 #if defined( SOIL_GLES2 )
@@ -259,7 +264,7 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 
 #if defined( SOIL_PLATFORM_IOS )
 	func = dlsym( RTLD_DEFAULT, proc );
-#elif defined( SOIL_GLES2 ) || defined( SOIL_GLES1 )
+#elif defined( SOIL_GLES2 ) || defined( SOIL_GLES1 ) || defined( SOIL_EGL )
 	#ifndef SOIL_NO_EGL
 		func = eglGetProcAddress( proc );
 	#else
@@ -302,7 +307,7 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 #if !defined(GLX_VERSION_1_4)
 	glXGetProcAddressARB
 #else
-	glXGetProcAddress
+	(void*) glXGetProcAddress
 #endif
 	( (const GLubyte *)proc );
 #elif defined(__sgi) || defined (__sun) || defined(__HAIKU__)
@@ -2244,20 +2249,20 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	/*	validate the header (warning, "goto"'s ahead, shield your eyes!!)	*/
 	unsigned int flag = ( 'D' << 0 ) | ( 'D' << 8 ) | ( 'S' << 16 ) | ( ' ' << 24 );
 
-	if( header.dwMagic != flag ) { goto quick_exit; }
-	if( header.dwSize != 124 ) { goto quick_exit; }
+	if( header.dwMagic != flag ) { return tex_ID; }
+	if( header.dwSize != 124 ) { return tex_ID; }
 	/*	I need all of these	*/
 	flag = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT;
-	if( ( header.dwFlags & flag ) != flag ) { goto quick_exit; }
+	if( ( header.dwFlags & flag ) != flag ) { return tex_ID; }
 	/*	According to the MSDN spec, the dwFlags should contain
 	    DDSD_LINEARSIZE if it's compressed, or DDSD_PITCH if
 	    uncompressed.  Some DDS writers do not conform to the
 	    spec, so I need to make my reader more tolerant	*/
 	/*	I need one of these	*/
 	flag = DDPF_FOURCC | DDPF_RGB | DDPF_LUMINANCE;
-	if( ( header.sPixelFormat.dwFlags & flag ) == 0 ) { goto quick_exit; }
-	if( header.sPixelFormat.dwSize != 32 ) { goto quick_exit; }
-	if( ( header.sCaps.dwCaps1 & DDSCAPS_TEXTURE ) == 0 ) { goto quick_exit; }
+	if( ( header.sPixelFormat.dwFlags & flag ) == 0 ) { return tex_ID; }
+	if( header.sPixelFormat.dwSize != 32 ) { return tex_ID; }
+	if( ( header.sCaps.dwCaps1 & DDSCAPS_TEXTURE ) == 0 ) { return tex_ID; }
 
 	enum Magics
 	{
@@ -2282,8 +2287,8 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		&& header.sPixelFormat.dwFourCC != DXT5
 		&& header.sPixelFormat.dwFourCC != ATI2
 		&& header.sPixelFormat.dwFourCC != DX10
-	){
-		goto quick_exit;
+	) {
+		return tex_ID;
 	}
 
 	/*	OK, validated the header, let's load the image data	*/
@@ -2603,7 +2608,6 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		}
 	}
 
-quick_exit:
 	return tex_ID;
 }
 
@@ -2655,13 +2659,11 @@ unsigned int SOIL_direct_load_DDS(
 	return tex_ID;
 }
 
-unsigned int SOIL_direct_load_PVR_from_memory(
-		const unsigned char *const buffer,
-		int buffer_length,
-		unsigned int reuse_texture_ID,
-		int flags,
-		int loading_as_cubemap )
-{
+unsigned int SOIL_direct_load_PVR_from_memory( const unsigned char* const buffer, int buffer_length,
+											   unsigned int reuse_texture_ID, int flags,
+											   int loading_as_cubemap ) {
+	if ( buffer_length < 0 || (unsigned long)buffer_length < sizeof( PVR_Texture_Header ) )
+		return 0;
 	PVR_Texture_Header* header = (PVR_Texture_Header*)buffer;
 	int num_surfs = 1;
 	GLuint tex_ID = 0;
@@ -3410,7 +3412,7 @@ int query_gen_mipmap_capability( void )
 				ext_addr = (P_SOIL_GLGENERATEMIPMAPPROC)SOIL_GL_GetProcAddress("glGenerateMipmap");
 			}
 
-			#elif defined( SOIL_GLES2 )
+			#elif defined( SOIL_GLES2 ) || defined( SOIL_EGL )
 				ext_addr = 	&glGenerateMipmap;
 			#else /** SOIL_GLES1 */
 				ext_addr = &glGenerateMipmapOES;
