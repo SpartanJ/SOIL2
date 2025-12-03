@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.27)
 project(soil2 LANGUAGES CXX C VERSION 1.0.0)
 
 option(SOIL2_BUILD_TESTS "Build tests")
