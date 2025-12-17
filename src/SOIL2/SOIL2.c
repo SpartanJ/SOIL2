@@ -318,6 +318,12 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 	return func;
 }
 
+/* macOS OpenGL headers do not define GL_TEXTURE_2D_ARRAY */
+#ifndef GL_TEXTURE_2D_ARRAY
+#define GL_TEXTURE_2D_ARRAY 0x8C1A
+#endif
+
+
 /* Based on the SDL2 implementation */
 int SOIL_GL_ExtensionSupported(const char *extension)
 {
@@ -754,7 +760,6 @@ unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
     unsigned char* atlasData = NULL;
     int atlasW = 0, atlasH = 0, channels = 0;
     unsigned int tex_id = 0;
-    int numLayers = 0;
 
     atlasData = SOIL_load_image(filename, &atlasW, &atlasH, &channels, force_channels);
 
@@ -764,8 +769,9 @@ unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
         return 0;
     }
 
-    if (force_channels >= 1 && force_channels <= 4)
+    if (force_channels >= 1 && force_channels <= 4){
         channels = force_channels;
+	}
 
 	SOIL_ImageArray imgArray = extract_image_array_from_atlas_grid(	
 		atlasData,
