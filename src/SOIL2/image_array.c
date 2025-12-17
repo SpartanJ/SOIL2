@@ -281,7 +281,11 @@ SOIL_ImageArray extract_image_array_from_atlas_grid(
     result.channels = channels;
 
     result.data = (unsigned char**)malloc(sizeof(unsigned char*) * numLayers);
-    if (!result.data) return (SOIL_ImageArray){0};
+    if (!result.data){
+        SOIL_ImageArray empty;
+        memset(&empty, 0, sizeof(empty));
+        return empty;
+    }
 
     for (int i = 0; i < numLayers; ++i)
         result.data[i] = NULL;
@@ -302,7 +306,11 @@ SOIL_ImageArray extract_image_array_from_atlas_grid(
                 for (int i = 0; i < numLayers; ++i)
                     free(result.data[i]);
                 free(result.data);
-                return (SOIL_ImageArray){0};
+                
+                SOIL_ImageArray empty;
+                memset(&empty, 0, sizeof(empty));
+                
+                return empty;
             }
 
             for (int y = 0; y < tile_h; ++y) {
