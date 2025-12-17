@@ -24,6 +24,8 @@ add_library(soil2
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pvr.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stbi_pvr_c.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/wfETC.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_array.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_array.h"
 )
 
 target_compile_options(soil2 PRIVATE
@@ -48,6 +50,19 @@ if(SOIL2_BUILD_TESTS)
     )
     target_link_libraries(soil2_test soil2 SDL2::SDL2 OpenGL::GL)
 
+    add_executable(soil2_test_grid_atlas
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/test/test_Grid.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/common/common.cpp
+    )
+    target_link_libraries(soil2_test_grid_atlas soil2 SDL2::SDL2 OpenGL::GL)
+
+    
+    set_target_properties(soil2_test_grid_atlas PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/tests/Debug
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/tests/Release
+    )
+
     add_executable(soil2_perf_test
         ${CMAKE_CURRENT_SOURCE_DIR}/src/perf_test/test_perf_SOIL2.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/common.cpp
@@ -60,6 +75,7 @@ if(SOIL2_BUILD_TESTS)
        COMMAND ${CMAKE_COMMAND} -E copy_directory
        ${CMAKE_SOURCE_DIR}/bin/ $<TARGET_FILE_DIR:soil2_test>
     )
+
 endif()
 
 install(

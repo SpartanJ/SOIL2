@@ -46,6 +46,8 @@
 #ifndef HEADER_SIMPLE_OPENGL_IMAGE_LIBRARY
 #define HEADER_SIMPLE_OPENGL_IMAGE_LIBRARY
 
+#include "image_array_helper.h" 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -479,10 +481,122 @@ void
 	SOIL_free_image_data
 	(
 		unsigned char *img_data
-	);
+);
 
 /**
-	This function resturn a pointer to a string describing the last thing
+    Selects the appropriate OpenGL texture formats based on the number of channels and flags.
+    This function determines both the internal format (how OpenGL stores the texture) and 
+    the external format (how the data is provided) for texture uploads.
+    
+    \param channels Number of color channels: 1 (L), 2 (LA), 3 (RGB), or 4 (RGBA)
+    \param flags Bitwise combination of SOIL_FLAG_* options (e.g., SOIL_FLAG_COMPRESS_TO_DXT, SOIL_FLAG_SRGB_COLOR_SPACE)
+    \param out_internal Pointer to store the selected internal GL format (GL_RGB, GL_RGBA, SOIL_RGB_S3TC_DXT1, etc.)
+    \param out_external Pointer to store the selected external GL format (GL_RGB, GL_RGBA, GL_LUMINANCE, etc.)
+**/
+void SOIL_choose_gl_formats(
+    int channels,
+    int flags,
+    int *out_internal,
+    int *out_external
+);
+
+/**
+    Uploads image layers to a 2D texture array in OpenGL.
+    This function transfers the image data from each layer of a SOIL_ImageArray
+    to the GPU, storing them as individual layers in a GL_TEXTURE_2D_ARRAY.
+    
+    \param imgArray Pointer to the SOIL_ImageArray containing the layer data to upload
+    \param external_fmt The OpenGL external format specifying how the data is organized (GL_RGB, GL_RGBA, GL_LUMINANCE, etc.)
+**/
+void SOIL_upload_image_array_layers(
+    const SOIL_ImageArray *imgArray,
+    int external_fmt
+);
+
+/**
+    Creates GPU storage for a 2D texture array with specified dimensions and layer count.
+    Allocates the necessary GPU memory for a texture array without loading data initially.
+    Data can be populated later using SOIL_upload_image_array_layers().
+    
+    \param reuse_id 0 to generate a new texture ID, or an existing texture ID to reuse
+    \param internal_fmt The OpenGL internal format specifying how the GPU stores the texture (GL_RGB, GL_RGBA, GL_SRGB, etc.)
+    \param external_fmt The OpenGL external format specifying the input data layout (GL_RGB, GL_RGBA, GL_LUMINANCE, etc.)
+    \param w Width of each texture layer in pixels
+    \param h Height of each texture layer in pixels
+    \param layers Number of layers in the texture array
+    \return OpenGL texture ID for the created texture array, or 0 if creation failed
+**/
+unsigned int SOIL_create_texture_array_storage(
+    unsigned int reuse_id,
+    int internal_fmt,
+    int external_fmt,
+    int w,
+    int h,
+    int layers
+);
+
+/**
+    Configures texture parameters for a 2D texture array based on the provided flags.
+    Sets up filtering, wrapping, and mipmap behavior for the currently bound texture array.
+    
+    \param flags Bitwise combination of SOIL_FLAG_* options (e.g., SOIL_FLAG_MIPMAPS, SOIL_FLAG_TEXTURE_REPEATS)
+**/
+void SOIL_setup_texture_params(int flags);
+
+/**
+    Loads an image atlas from disk and splits it into a 2D texture array.
+    Divides a single image file into a grid of smaller images and uploads them as individual
+    layers in a GL_TEXTURE_2D_ARRAY texture, ideal for sprite sheets and tile atlases.
+    
+    \param filename the name of the atlas file to load
+    \param cols number of columns in the atlas grid
+    \param rows number of rows in the atlas grid
+    \param force_channels 0-image format, 1-luminous, 2-luminous/alpha, 3-RGB, 4-RGBA
+    \param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the texture ID (overwriting the old texture)
+    \param flags can be any of SOIL_FLAG_POWER_OF_TWO | SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_MULTIPLY_ALPHA | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT
+    \return 0-failed, otherwise returns the OpenGL texture array handle
+**/
+unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
+	const char *filename,
+    int cols,
+    int rows,
+    int force_channels,
+    unsigned int reuse_texture_ID,
+    unsigned int flags
+);
+
+/**
+    Prepares an image array for GPU upload by applying transformations.
+    Processes the image array according to flags (invert Y, NTSC safe, alpha multiplication, etc.)
+    and ensures dimensions meet GPU constraints (POT, max texture size).
+    
+    \param imgArray pointer to the SOIL_ImageArray to process
+    \param flags bitwise combination of SOIL_FLAG_* options specifying transformations to apply
+    \return 1 if successful, 0 if preparation failed
+**/
+int SOIL_prepare_image_array(
+    SOIL_ImageArray* imgArray,
+    unsigned int flags
+);
+
+/**
+    Uploads a prepared image array to GPU memory as a 2D texture array.
+    Transfers all layers from a SOIL_ImageArray to OpenGL, creating or reusing a texture ID,
+    and applies texture parameter settings.
+    
+    \param imgArray pointer to the SOIL_ImageArray containing the layers to upload
+    \param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the texture ID (overwriting the old texture)
+    \param flags bitwise combination of SOIL_FLAG_* options for texture configuration
+    \return 0-failed, otherwise returns the OpenGL texture array handle
+**/
+unsigned int SOIL_upload_image_array_to_gl(
+    const SOIL_ImageArray *imgArray,
+    unsigned int reuse_texture_ID,
+    unsigned int flags
+);
+
+/**
+	This function returns a pointer to a string describing the last thing
 	that happened inside SOIL.  It can be used to determine why an image
 	failed to load.
 **/

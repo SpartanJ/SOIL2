@@ -122,6 +122,7 @@
 #include "image_DXT.h"
 #include "pvr_helper.h"
 #include "pkm_helper.h"
+#include "image_array.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -204,6 +205,43 @@ int query_ETC1_capability( void );
 #if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX ) || defined(__HAIKU__)
 typedef const GLubyte *(APIENTRY * P_SOIL_glGetStringiFunc) (GLenum, GLuint);
 static P_SOIL_glGetStringiFunc soilGlGetStringiFunc = NULL;
+
+int query_teximage3d_capability( void );
+
+#ifndef GL_TEXTURE_2D_ARRAY
+#define GL_TEXTURE_2D_ARRAY 0x8C1A
+#endif
+
+typedef void (APIENTRY *P_SOIL_GLTEXIMAGE3DPROC)(
+    GLenum target,
+    GLint level,
+    GLint internalformat,
+    GLsizei width,
+    GLsizei height,
+    GLsizei depth,
+    GLint border,
+    GLenum format,
+    GLenum type,
+    const void *pixels
+);
+static P_SOIL_GLTEXIMAGE3DPROC soilGlTexImage3D = NULL;
+
+typedef void (APIENTRY *P_SOIL_GLTEXSUBIMAGE3DPROC)(
+    GLenum target,
+    GLint level,
+    GLint xoffset,
+    GLint yoffset,
+    GLint zoffset,
+    GLsizei width,
+    GLsizei height,
+    GLsizei depth,
+    GLenum format,
+    GLenum type,
+    const void *pixels
+);
+static P_SOIL_GLTEXSUBIMAGE3DPROC soilGlTexSubImage3D = NULL;
+
+static int has_teximage3d_capability = SOIL_CAPABILITY_UNKNOWN;
 
 static int isAtLeastGL3()
 {
@@ -316,6 +354,8 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 
 	return func;
 }
+
+
 
 /* Based on the SDL2 implementation */
 int SOIL_GL_ExtensionSupported(const char *extension)
@@ -625,6 +665,283 @@ unsigned int
 	SOIL_free_image_data( img );
 	/*	and return the handle, such as it is	*/
 	return tex_id;
+}
+
+void check_for_GL_errors( const char *calling_location );
+
+void SOIL_choose_gl_formats(
+    int channels,
+    int flags,
+    int *out_internal,
+    int *out_external
+)
+{
+    int sRGB = (query_sRGB_capability() == SOIL_CAPABILITY_PRESENT) &&
+               (flags & SOIL_FLAG_SRGB_COLOR_SPACE);
+
+    switch (channels) {
+        case 1: *out_external = GL_LUMINANCE; break;
+        case 2: *out_external = GL_LUMINANCE_ALPHA; break;
+        case 3: *out_external = GL_RGB; break;
+        case 4: *out_external = GL_RGBA; break;
+        default:*out_external = GL_RGB; break;
+    }
+
+    *out_internal = *out_external;
+
+    if (flags & SOIL_FLAG_COMPRESS_TO_DXT) {
+        if (query_DXT_capability() == SOIL_CAPABILITY_PRESENT) {
+            if ((channels & 1) == 1)
+                *out_internal = sRGB
+                    ? SOIL_GL_COMPRESSED_SRGB_S3TC_DXT1_EXT
+                    : SOIL_RGB_S3TC_DXT1;
+            else
+                *out_internal = sRGB
+                    ? SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT
+                    : SOIL_RGBA_S3TC_DXT5;
+        }
+    } else if (sRGB) {
+        if (channels == 3) *out_internal = SOIL_GL_SRGB;
+        if (channels == 4) *out_internal = SOIL_GL_SRGB_ALPHA;
+    }
+}
+
+void SOIL_upload_image_array_layers(
+    const SOIL_ImageArray *imgArray,
+    int external_fmt
+)
+{
+    for (int layer = 0; layer < imgArray->layers; ++layer) {
+        soilGlTexSubImage3D(
+            GL_TEXTURE_2D_ARRAY,
+            0,
+            0, 0, layer,
+            imgArray->width,
+            imgArray->height,
+            1,
+            external_fmt,
+            GL_UNSIGNED_BYTE,
+            imgArray->data[layer]
+        );
+    }
+}
+
+unsigned int SOIL_create_texture_array_storage(
+    unsigned int reuse_id,
+    int internal_fmt,
+    int external_fmt,
+    int w,
+    int h,
+    int layers
+)
+{
+    unsigned int tex = reuse_id;
+
+	if (query_teximage3d_capability() != SOIL_CAPABILITY_PRESENT)
+    {
+        result_string_pointer = "OpenGL 3D textures not supported";
+        return 0;
+    }
+
+    if (tex == 0)
+        glGenTextures(1, &tex);
+
+    if (!tex)
+        return 0;
+
+    glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
+
+    soilGlTexImage3D(
+        GL_TEXTURE_2D_ARRAY,
+        0,
+        internal_fmt,
+        w, h, layers,
+        0,
+        external_fmt,
+        GL_UNSIGNED_BYTE,
+        NULL
+    );
+
+    return tex;
+}
+
+void SOIL_setup_texture_params(int flags)
+{
+    if (flags & (SOIL_FLAG_MIPMAPS | SOIL_FLAG_GL_MIPMAPS)) {
+        if (soilGlGenerateMipmap)
+            soilGlGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    } else {
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    }
+
+    if (flags & SOIL_FLAG_TEXTURE_REPEATS) {
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    } else {
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, SOIL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, SOIL_CLAMP_TO_EDGE);
+    }
+}
+
+unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
+	const char *filename,
+    int cols,
+    int rows,
+    int force_channels,
+    unsigned int reuse_texture_ID,
+    unsigned int flags
+){
+    if (query_teximage3d_capability() != SOIL_CAPABILITY_PRESENT)
+    {
+        result_string_pointer = "Texture arrays not supported by OpenGL driver";
+        return 0;
+    }
+
+    unsigned char* atlasData = NULL;
+    int atlasW = 0, atlasH = 0, channels = 0;
+    unsigned int tex_id = 0;
+
+    atlasData = SOIL_load_image(filename, &atlasW, &atlasH, &channels, force_channels);
+
+    if (!atlasData)
+    {
+        result_string_pointer = stbi_failure_reason();
+        return 0;
+    }
+
+    if (force_channels >= 1 && force_channels <= 4){
+        channels = force_channels;
+	}
+
+	SOIL_ImageArray imgArray = extract_image_array_from_atlas_grid(	
+		atlasData,
+		atlasW,
+		atlasH,
+		cols,
+		rows,
+		channels
+	);
+	    
+    if (!imgArray.data || imgArray.layers == 0) {
+        result_string_pointer = "Failed to extract image array from atlas";
+        SOIL_free_image_data(atlasData);
+        return 0;
+    }
+
+    SOIL_free_image_data(atlasData);
+	
+	if (!SOIL_prepare_image_array(&imgArray, flags)) {
+		SOIL_image_array_free(&imgArray);
+		return 0;
+	}
+
+	tex_id = SOIL_upload_image_array_to_gl(
+		&imgArray,
+		reuse_texture_ID,
+		flags
+	);
+	
+	SOIL_image_array_free(&imgArray);
+
+	return tex_id;
+}
+
+int SOIL_prepare_image_array(
+    SOIL_ImageArray* imgArray,
+    unsigned int flags
+)
+{
+    if (!imgArray || !imgArray->data) {
+        result_string_pointer = "Invalid image array";
+        return 0;
+    }
+
+    if (flags & SOIL_FLAG_INVERT_Y) {
+        image_array_invert_y(imgArray);
+    }
+
+    if (flags & SOIL_FLAG_NTSC_SAFE_RGB) {
+        image_array_to_NTSC_safe(imgArray);
+    }
+
+    if (flags & SOIL_FLAG_MULTIPLY_ALPHA) {
+        image_array_premultiply_alpha(imgArray);
+    }
+
+    if (flags & SOIL_FLAG_CoCg_Y) {
+        image_array_to_YCoCg(imgArray);
+    }
+
+    /* POT handling */
+    if ((flags & SOIL_FLAG_POWER_OF_TWO) ||
+        query_NPOT_capability() != SOIL_CAPABILITY_PRESENT)
+    {
+        if (!image_array_resize_POT(imgArray)) {
+            result_string_pointer = "Failed to resize image array to POT";
+            return 0;
+        }
+    }
+
+    /* GPU max texture size */
+    int max_texture_size = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+
+    if (imgArray->width > max_texture_size ||
+        imgArray->height > max_texture_size)
+    {
+        if (!image_array_reduce_to_max(imgArray, max_texture_size)) {
+            result_string_pointer = "Failed to reduce image array to GPU limits";
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+unsigned int SOIL_upload_image_array_to_gl(
+    const SOIL_ImageArray *imgArray,
+    unsigned int reuse_texture_ID,
+    unsigned int flags
+)
+{
+    if (!imgArray || !imgArray->data)
+        return 0;
+
+    int internal_fmt, external_fmt;
+    
+	SOIL_choose_gl_formats(
+        imgArray->channels,
+        flags,
+        &internal_fmt,
+        &external_fmt
+    );
+
+    GLint unpack;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack);
+    if (unpack != 1) glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    unsigned int tex = SOIL_create_texture_array_storage(
+        reuse_texture_ID,
+        internal_fmt,
+        external_fmt,
+        imgArray->width,
+        imgArray->height,
+        imgArray->layers
+    );
+
+    if (!tex)
+        return 0;
+
+    SOIL_upload_image_array_layers(imgArray, external_fmt);
+    SOIL_setup_texture_params(flags);
+
+    if (unpack != 1) glPixelStorei(GL_UNPACK_ALIGNMENT, unpack);
+
+    return tex;
 }
 
 unsigned int
@@ -3432,4 +3749,28 @@ int query_gen_mipmap_capability( void )
 	}
 
 	return has_gen_mipmap_capability;
+}
+
+int query_teximage3d_capability(void)
+{
+    if (has_teximage3d_capability == SOIL_CAPABILITY_UNKNOWN)
+    {
+
+        soilGlTexImage3D = (P_SOIL_GLTEXIMAGE3DPROC)
+            SOIL_GL_GetProcAddress("glTexImage3D");
+        
+        soilGlTexSubImage3D = (P_SOIL_GLTEXSUBIMAGE3DPROC)
+            SOIL_GL_GetProcAddress("glTexSubImage3D");
+
+        if (soilGlTexImage3D && soilGlTexSubImage3D)
+        {
+            has_teximage3d_capability = SOIL_CAPABILITY_PRESENT;
+        }
+        else
+        {
+            has_teximage3d_capability = SOIL_CAPABILITY_NONE;
+        }
+    }
+    
+    return has_teximage3d_capability;
 }
