@@ -3755,7 +3755,7 @@ int query_teximage3d_capability(void)
 {
     if (has_teximage3d_capability == SOIL_CAPABILITY_UNKNOWN)
     {
-        // Intentar cargar las funciones
+
         soilGlTexImage3D = (P_SOIL_GLTEXIMAGE3DPROC)
             SOIL_GL_GetProcAddress("glTexImage3D");
         

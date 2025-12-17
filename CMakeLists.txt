@@ -55,7 +55,7 @@ if(SOIL2_BUILD_TESTS)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/common/common.cpp
     )
     target_link_libraries(soil2_test_grid_atlas soil2 SDL2::SDL2 OpenGL::GL)
-            # Salida en build/tests (soporta multi-config)
+
     
     set_target_properties(soil2_test_grid_atlas PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
