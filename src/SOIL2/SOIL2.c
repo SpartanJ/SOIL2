@@ -206,6 +206,43 @@ int query_ETC1_capability( void );
 typedef const GLubyte *(APIENTRY * P_SOIL_glGetStringiFunc) (GLenum, GLuint);
 static P_SOIL_glGetStringiFunc soilGlGetStringiFunc = NULL;
 
+int query_teximage3d_capability( void );
+
+#ifndef GL_TEXTURE_2D_ARRAY
+#define GL_TEXTURE_2D_ARRAY 0x8C1A
+#endif
+
+typedef void (APIENTRY *P_SOIL_GLTEXIMAGE3DPROC)(
+    GLenum target,
+    GLint level,
+    GLint internalformat,
+    GLsizei width,
+    GLsizei height,
+    GLsizei depth,
+    GLint border,
+    GLenum format,
+    GLenum type,
+    const void *pixels
+);
+static P_SOIL_GLTEXIMAGE3DPROC soilGlTexImage3D = NULL;
+
+typedef void (APIENTRY *P_SOIL_GLTEXSUBIMAGE3DPROC)(
+    GLenum target,
+    GLint level,
+    GLint xoffset,
+    GLint yoffset,
+    GLint zoffset,
+    GLsizei width,
+    GLsizei height,
+    GLsizei depth,
+    GLenum format,
+    GLenum type,
+    const void *pixels
+);
+static P_SOIL_GLTEXSUBIMAGE3DPROC soilGlTexSubImage3D = NULL;
+
+static int has_teximage3d_capability = SOIL_CAPABILITY_UNKNOWN;
+
 static int isAtLeastGL3()
 {
 	static int is_gl3 = SOIL_CAPABILITY_UNKNOWN;
@@ -318,10 +355,6 @@ void * SOIL_GL_GetProcAddress(const char *proc)
 	return func;
 }
 
-/* macOS OpenGL headers do not define GL_TEXTURE_2D_ARRAY */
-#ifndef GL_TEXTURE_2D_ARRAY
-#define GL_TEXTURE_2D_ARRAY 0x8C1A
-#endif
 
 
 /* Based on the SDL2 implementation */
@@ -679,7 +712,7 @@ void SOIL_upload_image_array_layers(
 )
 {
     for (int layer = 0; layer < imgArray->layers; ++layer) {
-        glTexSubImage3D(
+        soilGlTexSubImage3D(
             GL_TEXTURE_2D_ARRAY,
             0,
             0, 0, layer,
@@ -704,6 +737,12 @@ unsigned int SOIL_create_texture_array_storage(
 {
     unsigned int tex = reuse_id;
 
+	if (query_teximage3d_capability() != SOIL_CAPABILITY_PRESENT)
+    {
+        result_string_pointer = "OpenGL 3D textures not supported";
+        return 0;
+    }
+
     if (tex == 0)
         glGenTextures(1, &tex);
 
@@ -712,7 +751,7 @@ unsigned int SOIL_create_texture_array_storage(
 
     glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
 
-    glTexImage3D(
+    soilGlTexImage3D(
         GL_TEXTURE_2D_ARRAY,
         0,
         internal_fmt,
@@ -756,7 +795,12 @@ unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
     unsigned int reuse_texture_ID,
     unsigned int flags
 ){
-    
+    if (query_teximage3d_capability() != SOIL_CAPABILITY_PRESENT)
+    {
+        result_string_pointer = "Texture arrays not supported by OpenGL driver";
+        return 0;
+    }
+
     unsigned char* atlasData = NULL;
     int atlasW = 0, atlasH = 0, channels = 0;
     unsigned int tex_id = 0;
@@ -3705,4 +3749,28 @@ int query_gen_mipmap_capability( void )
 	}
 
 	return has_gen_mipmap_capability;
+}
+
+int query_teximage3d_capability(void)
+{
+    if (has_teximage3d_capability == SOIL_CAPABILITY_UNKNOWN)
+    {
+        // Intentar cargar las funciones
+        soilGlTexImage3D = (P_SOIL_GLTEXIMAGE3DPROC)
+            SOIL_GL_GetProcAddress("glTexImage3D");
+        
+        soilGlTexSubImage3D = (P_SOIL_GLTEXSUBIMAGE3DPROC)
+            SOIL_GL_GetProcAddress("glTexSubImage3D");
+
+        if (soilGlTexImage3D && soilGlTexSubImage3D)
+        {
+            has_teximage3d_capability = SOIL_CAPABILITY_PRESENT;
+        }
+        else
+        {
+            has_teximage3d_capability = SOIL_CAPABILITY_NONE;
+        }
+    }
+    
+    return has_teximage3d_capability;
 }
