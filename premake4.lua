@@ -200,7 +200,7 @@ solution "SOIL2"
 		kind "ConsoleApp"
 		language "C++"
 		links { "soil2-static-lib" }
-		files { "src/test/*.cpp", "src/common/*.cpp" }
+		files { "src/test/test_SOIL2.cpp", "src/common/*.cpp" }
 
 		if os.is("windows") and not is_vs() then
 			links { "mingw32" }
@@ -245,6 +245,57 @@ solution "SOIL2"
 			defines { "NDEBUG" }
 			flags { "Optimize" }
 			targetname "soil2-test-release"
+
+    project "soil2-grid-atlas-test"
+        kind "ConsoleApp"
+        language "C++"
+        links { "soil2-static-lib" }
+        files { "src/test/test_Grid.cpp", "src/common/common.cpp" }
+
+        if os.is("windows") and not is_vs() then
+            links { "mingw32" }
+        end
+
+        configuration "mingw32"
+            flags { "EnableSSE", "EnableSSE2" }
+            defines { "STBI_MINGW_ENABLE_SSE2" }
+            links { "mingw32" }
+
+        configuration "windows"
+            links {"opengl32","SDL2main","SDL2"}
+
+        configuration "linux"
+            links {"GL","SDL2"}
+
+        configuration "macosx"
+            links { "OpenGL.framework", "CoreFoundation.framework", get_backend_link_name("SDL2") }
+            buildoptions {"-F /Library/Frameworks"}
+            linkoptions {"-F /Library/Frameworks"}
+            includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
+            defines { "GL_SILENCE_DEPRECATION" }
+            if not _OPTIONS["use-frameworks"] then
+                defines { "SOIL2_NO_FRAMEWORKS" }
+            end
+
+        configuration "haiku"
+            links {"GL","SDL2"}
+
+        configuration "freebsd"
+            links {"GL","SDL2"}
+
+        configuration "debug"
+            defines { "DEBUG" }
+            flags { "Symbols" }
+            if not is_vs() then
+                buildoptions{ "-Wall" }
+            end
+            targetname "soil2-grid-atlas-test-debug"
+
+        configuration "release"
+            defines { "NDEBUG" }
+            flags { "Optimize" }
+            targetname "soil2-grid-atlas-test-release"
+
 
 	project "soil2-perf-test"
 		kind "ConsoleApp"

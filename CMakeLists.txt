@@ -70,11 +70,12 @@ if(SOIL2_BUILD_TESTS)
     target_link_libraries(soil2_perf_test soil2 SDL2::SDL2 OpenGL::GL)
 
     # Create symlink to test images
-    #add_custom_command(
-    #    TARGET soil2_test PRE_BUILD
-    #   COMMAND ${CMAKE_COMMAND} -E copy_directory
-    #   ${CMAKE_SOURCE_DIR}/bin/ $<TARGET_FILE_DIR:soil2_test>
-    #)
+    add_custom_command(
+        TARGET soil2_test PRE_BUILD
+       COMMAND ${CMAKE_COMMAND} -E copy_directory
+       ${CMAKE_SOURCE_DIR}/bin/ $<TARGET_FILE_DIR:soil2_test>
+    )
+
 endif()
 
 install(
