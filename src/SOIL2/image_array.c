@@ -28,16 +28,16 @@ void SOIL_image_array_free(SOIL_ImageArray *imgArray){
 }
 
 void image_array_invert_y(SOIL_ImageArray* imgArray){
-	
+
 	if (!imgArray || !imgArray->data)
 		return;
 
 	const size_t rowBytes = (size_t)(imgArray->width) * (size_t)(imgArray->channels);
 
 	for (int layer = 0; layer < imgArray->layers; ++layer) {
-		
+
 		unsigned char *image = imgArray->data[layer];
-		
+
 		if (!image) continue;
 
 		for (int y = 0; y < imgArray->height / 2; ++y) {
@@ -54,16 +54,16 @@ void image_array_invert_y(SOIL_ImageArray* imgArray){
 }
 
 void image_array_premultiply_alpha(SOIL_ImageArray* imgArray){
-	
+
 	if (!imgArray || !imgArray->data)
 		return;
 
 	const size_t numPixels = (size_t)(imgArray->width) * (size_t)(imgArray->height);
 
 	for (int layer = 0; layer < imgArray->layers; ++layer) {
-		
+
 		unsigned char *image = imgArray->data[layer];
-		
+
 		if (!image) continue;
 
 		for (size_t i = 0; i < numPixels; ++i) {
@@ -80,16 +80,16 @@ void image_array_premultiply_alpha(SOIL_ImageArray* imgArray){
 }
 
 void image_array_to_NTSC_safe(SOIL_ImageArray* imgArray){
-	
+
 	if (!imgArray || !imgArray->data)
 		return;
 
 	const size_t numPixels = (size_t)(imgArray->width) * (size_t)(imgArray->height);
 
 	for (int layer = 0; layer < imgArray->layers; ++layer) {
-		
+
 		unsigned char *image = imgArray->data[layer];
-		
+
 		if (!image) continue;
 
 		for (size_t i = 0; i < numPixels; ++i) {
@@ -114,16 +114,16 @@ void image_array_to_NTSC_safe(SOIL_ImageArray* imgArray){
 }
 
 void image_array_to_YCoCg(SOIL_ImageArray* imgArray){
-	
+
 	if (!imgArray || !imgArray->data)
 		return;
 
 	const size_t numPixels = (size_t)(imgArray->width) * (size_t)(imgArray->height);
 
 	for (int layer = 0; layer < imgArray->layers; ++layer) {
-		
+
 		unsigned char *image = imgArray->data[layer];
-		
+
 		if (!image) continue;
 
 		for (size_t i = 0; i < numPixels; ++i) {
@@ -265,10 +265,10 @@ SOIL_ImageArray extract_image_array_from_atlas_grid(
     if (!atlasData || cols <= 0 || rows <= 0 || channels <= 0)
         return result;
 
-	if (atlasW % cols != 0 || atlasH % rows != 0)
+    if (atlasW % cols != 0 || atlasH % rows != 0)
     {
         result_string_pointer = "Atlas cannot be evenly divided by grid";
-		return result;
+        return result;
     }
 
     int tile_w = atlasW / cols;
@@ -306,10 +306,10 @@ SOIL_ImageArray extract_image_array_from_atlas_grid(
                 for (int i = 0; i < numLayers; ++i)
                     free(result.data[i]);
                 free(result.data);
-                
+
                 SOIL_ImageArray empty;
                 memset(&empty, 0, sizeof(empty));
-                
+
                 return empty;
             }
 
@@ -326,6 +326,6 @@ SOIL_ImageArray extract_image_array_from_atlas_grid(
             result.data[layer] = tile;
         }
     }
-	
+
     return result;
 }
