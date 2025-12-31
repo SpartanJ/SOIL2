@@ -775,6 +775,7 @@ unsigned int SOIL_create_texture_array_storage(
 
 void SOIL_setup_texture_params(int flags)
 {
+#if defined( SOIL_IMAGE_ARRAY_SUPPORT )
 	if (flags & (SOIL_FLAG_MIPMAPS | SOIL_FLAG_GL_MIPMAPS)) {
 		if (soilGlGenerateMipmap)
 			soilGlGenerateMipmap(GL_TEXTURE_2D_ARRAY);
@@ -793,6 +794,7 @@ void SOIL_setup_texture_params(int flags)
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, SOIL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, SOIL_CLAMP_TO_EDGE);
 	}
+#endif
 }
 
 unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
