@@ -525,7 +525,7 @@ unsigned int
 			GL_TEXTURE_2D, GL_TEXTURE_2D,
 			GL_MAX_TEXTURE_SIZE );
 	/*	and nuke the image data	*/
-	SOIL_free_image_data( img );
+	free( img );
 	/*	and return the handle, such as it is	*/
 	return tex_id;
 }
@@ -583,7 +583,7 @@ unsigned int
 			GL_TEXTURE_2D, GL_TEXTURE_2D,
 			GL_MAX_TEXTURE_SIZE );
 	/*	and nuke the image data	*/
-	SOIL_free_image_data( img );
+	free( img );
 	/*	and return the handle, such as it is	*/
 	return tex_id;
 }
@@ -666,7 +666,7 @@ unsigned int
 			GL_TEXTURE_2D, GL_TEXTURE_2D,
 			GL_MAX_TEXTURE_SIZE );
 	/*	and nuke the image data	*/
-	SOIL_free_image_data( img );
+	free( img );
 	/*	and return the handle, such as it is	*/
 	return tex_id;
 }
@@ -775,6 +775,7 @@ unsigned int SOIL_create_texture_array_storage(
 
 void SOIL_setup_texture_params(int flags)
 {
+#if defined( SOIL_IMAGE_ARRAY_SUPPORT )
 	if (flags & (SOIL_FLAG_MIPMAPS | SOIL_FLAG_GL_MIPMAPS)) {
 		if (soilGlGenerateMipmap)
 			soilGlGenerateMipmap(GL_TEXTURE_2D_ARRAY);
@@ -793,6 +794,7 @@ void SOIL_setup_texture_params(int flags)
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, SOIL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, SOIL_CLAMP_TO_EDGE);
 	}
+#endif
 }
 
 unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
@@ -836,11 +838,11 @@ unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
 
 	if (!imgArray.data || imgArray.layers == 0) {
 		result_string_pointer = "Failed to extract image array from atlas";
-		SOIL_free_image_data(atlasData);
+		free(atlasData);
 		return 0;
 	}
 
-	SOIL_free_image_data(atlasData);
+	free(atlasData);
 
 	if (!SOIL_prepare_image_array(&imgArray, flags)) {
 		SOIL_image_array_free(&imgArray);
@@ -1007,7 +1009,7 @@ unsigned int
 			SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_X,
 			SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 	/*	and nuke the image data	*/
-	SOIL_free_image_data( img );
+	free( img );
 	/*	continue?	*/
 	if( tex_id != 0 )
 	{
@@ -1031,7 +1033,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_X,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	continue?	*/
 	if( tex_id != 0 )
@@ -1056,7 +1058,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Y,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	continue?	*/
 	if( tex_id != 0 )
@@ -1081,7 +1083,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	continue?	*/
 	if( tex_id != 0 )
@@ -1106,7 +1108,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	continue?	*/
 	if( tex_id != 0 )
@@ -1131,7 +1133,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	and return the handle, such as it is	*/
 	return tex_id;
@@ -1200,7 +1202,7 @@ unsigned int
 			SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_X,
 			SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 	/*	and nuke the image data	*/
-	SOIL_free_image_data( img );
+	free( img );
 	/*	continue?	*/
 	if( tex_id != 0 )
 	{
@@ -1226,7 +1228,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_X,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	continue?	*/
 	if( tex_id != 0 )
@@ -1253,7 +1255,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Y,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	continue?	*/
 	if( tex_id != 0 )
@@ -1280,7 +1282,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	continue?	*/
 	if( tex_id != 0 )
@@ -1307,7 +1309,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Z,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	continue?	*/
 	if( tex_id != 0 )
@@ -1334,7 +1336,7 @@ unsigned int
 				SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 		/*	and nuke the image data	*/
-		SOIL_free_image_data( img );
+		free( img );
 	}
 	/*	and return the handle, such as it is	*/
 	return tex_id;
@@ -1427,7 +1429,7 @@ unsigned int
 	if( (width != 6*height) &&
 		(6*width != height) )
 	{
-		SOIL_free_image_data( img );
+		free( img );
 		result_string_pointer = "Single cubemap image must have a 6:1 ratio";
 		return 0;
 	}
@@ -1437,7 +1439,7 @@ unsigned int
 			face_order, reuse_texture_ID, flags
 			);
 	/*	nuke the temporary image data and return the texture handle	*/
-	SOIL_free_image_data( img );
+	free( img );
 	return tex_id;
 }
 
@@ -1536,7 +1538,7 @@ unsigned int
 	if( (width != 6*height) &&
 		(6*width != height) )
 	{
-		SOIL_free_image_data( img );
+		free( img );
 		result_string_pointer = "Single cubemap image must have a 6:1 ratio";
 		return 0;
 	}
@@ -1546,7 +1548,7 @@ unsigned int
 			face_order, reuse_texture_ID, flags
 			);
 	/*	nuke the temporary image data and return the texture handle	*/
-	SOIL_free_image_data( img );
+	free( img );
 	return tex_id;
 }
 
@@ -1656,7 +1658,7 @@ unsigned int
 				SOIL_MAX_CUBE_MAP_TEXTURE_SIZE );
 	}
 	/*	and nuke the image and sub-image data	*/
-	SOIL_free_image_data( sub_img );
+	free( sub_img );
 	/*	and return the handle, such as it is	*/
 	return tex_id;
 }
@@ -1747,7 +1749,7 @@ static void createMipmaps(const unsigned char *const img,
 						internal_texture_format, MIPwidth, MIPheight, 0,
 						DDS_size, DDS_data );
 					check_for_GL_errors( "glCompressedTexImage2D" );
-					SOIL_free_image_data( DDS_data );
+					free( DDS_data );
 				} else
 				{
 					/*	my compression failed, try the OpenGL driver's version	*/
@@ -1772,7 +1774,7 @@ static void createMipmaps(const unsigned char *const img,
 			MIPheight = (MIPheight + 1) / 2;
 		}
 
-		SOIL_free_image_data( resampled );
+		free( resampled );
 	}
 }
 
@@ -1935,7 +1937,7 @@ unsigned int
 					resampled, new_width, new_height );
 
 			/*	nuke the old guy ( if a copy exists ), then point it at the new guy	*/
-			SOIL_free_image_data( img );
+			free( img );
 			img = resampled;
 			*width = new_width;
 			*height = new_height;
@@ -1966,7 +1968,7 @@ unsigned int
 		mipmap_image( NULL != img ? img : data, iwidth, iheight, channels,
 						resampled, reduce_block_x, reduce_block_y );
 		/*	nuke the old guy, then point it at the new guy	*/
-		SOIL_free_image_data( img );
+		free( img );
 		img = resampled;
 		*width = new_width;
 		*height = new_height;
@@ -2071,7 +2073,7 @@ unsigned int
 					internal_texture_format, iwidth, iheight, 0,
 					DDS_size, DDS_data );
 				check_for_GL_errors( "glCompressedTexImage2D" );
-				SOIL_free_image_data( DDS_data );
+				free( DDS_data );
 				/*	printf( "Internal DXT compressor\n" );	*/
 			} else
 			{
@@ -2150,7 +2152,7 @@ unsigned int
 		result_string_pointer = "Failed to generate an OpenGL texture name; missing OpenGL context?";
 	}
 
-	SOIL_free_image_data( img );
+	free( img );
 
 	return tex_id;
 }
@@ -2220,7 +2222,7 @@ int
 	save_result = SOIL_save_image( filename, image_type, width, height, 3, pixel_data);
 
 	/*	And free the memory	*/
-	SOIL_free_image_data( pixel_data );
+	free( pixel_data );
 	return save_result;
 }
 
@@ -2498,16 +2500,6 @@ SOIL_write_image_to_memory
 )
 {
 	return SOIL_write_image_to_memory_quality(image_type, width, height, channels, data, 80, imageSize);
-}
-
-void
-	SOIL_free_image_data
-	(
-		unsigned char *img_data
-	)
-{
-	if ( img_data )
-		free( (void*)img_data );
 }
 
 const char*
@@ -2900,7 +2892,8 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			result_string_pointer = "DDS file was too small for expected image data";
 		}
 	} /* end reading each face */
-	SOIL_free_image_data( DDS_data );
+	free(DDS_data);
+
 	if( tex_ID )
 	{
 		/*	did I have MIPmaps?	*/
@@ -2980,7 +2973,7 @@ unsigned int SOIL_direct_load_DDS(
 	tex_ID = SOIL_direct_load_DDS_from_memory(
 		(const unsigned char *const)buffer, (int)buffer_length,
 		reuse_texture_ID, flags, loading_as_cubemap );
-	SOIL_free_image_data( buffer );
+	free( buffer );
 	return tex_ID;
 }
 
@@ -3295,7 +3288,7 @@ unsigned int SOIL_direct_load_PVR(
 	tex_ID = SOIL_direct_load_PVR_from_memory(
 		(const unsigned char *const)buffer, (int)buffer_length,
 		reuse_texture_ID, flags, loading_as_cubemap );
-	SOIL_free_image_data( buffer );
+	free( buffer );
 	return tex_ID;
 }
 
@@ -3432,7 +3425,7 @@ unsigned int SOIL_direct_load_ETC1(const char *filename,
 	tex_ID = SOIL_direct_load_ETC1_from_memory(
 		(const unsigned char *const)buffer, (int)buffer_length,
 		reuse_texture_ID, flags );
-	SOIL_free_image_data( buffer );
+	free( buffer );
 	return tex_ID;
 }
 
