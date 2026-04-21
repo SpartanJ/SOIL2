@@ -2803,7 +2803,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 
 	if( uncompressed )
 	{
-		unsigned char * DDS_data = malloc( DDS_full_size );
+		unsigned char * DDS_data = (unsigned char*) malloc( DDS_full_size );
 		if( NULL == DDS_data )
 		{
 			result_string_pointer = "malloc failed";
@@ -2970,7 +2970,7 @@ unsigned int SOIL_direct_load_DDS(
 		return 0;
 	}
 	fseek( f, 0, SEEK_SET );
-	unsigned char *buffer = malloc(buffer_length);
+	unsigned char *buffer = (unsigned char*) malloc(buffer_length);
 	if( NULL == buffer )
 	{
 		result_string_pointer = "malloc failed";
