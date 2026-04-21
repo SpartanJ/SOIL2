@@ -26,6 +26,7 @@ add_library(soil2
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/wfETC.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_array.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_array.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_array_helper.h"
 )
 
 target_compile_options(soil2 PRIVATE

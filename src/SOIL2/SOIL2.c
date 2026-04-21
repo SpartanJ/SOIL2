@@ -2515,7 +2515,7 @@ const char*
 #ifdef _MSC_VER
 #pragma optimize( "", off )
 #endif
-static inline int calc_total_block_size( int w, int h, int block_size ) {
+static unsigned int calc_total_block_size(const unsigned int w, const unsigned int h, const unsigned int block_size ) {
 	return ( ( w + 3 ) >> 2 ) * ( ( h + 3 ) >> 2 ) * block_size;
 }
 #ifdef _MSC_VER
@@ -2524,24 +2524,11 @@ static inline int calc_total_block_size( int w, int h, int block_size ) {
 
 unsigned int SOIL_direct_load_DDS_from_memory(
 		const unsigned char *const buffer,
-		int buffer_length,
-		unsigned int reuse_texture_ID,
-		int flags,
-		int loading_as_cubemap)
+		const int buffer_length,
+		const unsigned int reuse_texture_ID,
+		const int flags,
+		const int loading_as_cubemap)
 {
-
-	unsigned int buffer_index = 0;
-	unsigned int tex_ID = 0;
-
-	unsigned int internal_format = 0;
-	unsigned char *DDS_data;
-	unsigned int DDS_main_size;
-	unsigned int DDS_full_size;
-	int mipmaps, block_size = 16;
-	unsigned int cf_target, ogl_target_start, ogl_target_end;
-	unsigned int opengl_texture_type;
-	unsigned int format_type = GL_UNSIGNED_BYTE;
-
 	/*	1st off, does the filename even exist?	*/
 	if( NULL == buffer )
 	{
@@ -2551,35 +2538,34 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	}
 	if( buffer_length < (int)sizeof( DDS_header ) )
 	{
-		/*	we can't do it!	*/
 		result_string_pointer = "DDS file was too small to contain the DDS header";
 		return 0;
 	}
 
 	// Try reading in the header
 	DDS_header header;
-	memcpy( (void *)( &header ), (const void *)buffer, sizeof( DDS_header ) );
+	memcpy( &header, buffer, sizeof( DDS_header ) );
 
-	buffer_index += sizeof(DDS_header);
+	unsigned int buffer_index = sizeof(DDS_header);
 	/*	guilty until proven innocent	*/
 	result_string_pointer = "Failed to read a known DDS header";
 	/*	validate the header (warning, "goto"'s ahead, shield your eyes!!)	*/
-	unsigned int flag = ( 'D' << 0 ) | ( 'D' << 8 ) | ( 'S' << 16 ) | ( ' ' << 24 );
+	const unsigned int magic_bytes = ( 'D' << 0 ) | ( 'D' << 8 ) | ( 'S' << 16 ) | ( ' ' << 24 );
 
-	if( header.dwMagic != flag ) { return tex_ID; }
-	if( header.dwSize != 124 ) { return tex_ID; }
+	if( header.dwMagic != magic_bytes ) { return 0; }
+	if( header.dwSize != 124 ) { return 0; }
 	/*	I need all of these	*/
-	flag = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT;
-	if( ( header.dwFlags & flag ) != flag ) { return tex_ID; }
+	const int dds_flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT;
+	if( ( header.dwFlags & dds_flags ) != dds_flags ) { return 0; }
 	/*	According to the MSDN spec, the dwFlags should contain
 	    DDSD_LINEARSIZE if it's compressed, or DDSD_PITCH if
 	    uncompressed.  Some DDS writers do not conform to the
 	    spec, so I need to make my reader more tolerant	*/
 	/*	I need one of these	*/
-	flag = DDPF_FOURCC | DDPF_RGB | DDPF_LUMINANCE;
-	if( ( header.sPixelFormat.dwFlags & flag ) == 0 ) { return tex_ID; }
-	if( header.sPixelFormat.dwSize != 32 ) { return tex_ID; }
-	if( ( header.sCaps.dwCaps1 & DDSCAPS_TEXTURE ) == 0 ) { return tex_ID; }
+	const int pixel_format_flags = DDPF_FOURCC | DDPF_RGB | DDPF_LUMINANCE;
+	if( ( header.sPixelFormat.dwFlags & pixel_format_flags ) == 0 ) { return 0; }
+	if( header.sPixelFormat.dwSize != 32 ) { return 0; }
+	if( ( header.sCaps.dwCaps1 & DDSCAPS_TEXTURE ) == 0 ) { return 0; }
 
 	enum Magics
 	{
@@ -2593,7 +2579,12 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	// DX10 has an extended header
 	DDS_HEADER_DXT10 dx10_header;
 	if (header.sPixelFormat.dwFourCC == DX10) {
-		memcpy((void*)(&dx10_header), (const void*)&buffer[buffer_index], sizeof(DDS_HEADER_DXT10));
+		if( buffer_length - buffer_index < (int)sizeof( DDS_HEADER_DXT10 ) )
+		{
+			result_string_pointer = "DDS file was too small to contain the DDS DXT10 header";
+			return 0;
+		}
+		memcpy(&dx10_header, &buffer[buffer_index], sizeof(DDS_HEADER_DXT10));
 		buffer_index += sizeof(dx10_header);
 	}
 
@@ -2605,16 +2596,18 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		&& header.sPixelFormat.dwFourCC != ATI2
 		&& header.sPixelFormat.dwFourCC != DX10
 	) {
-		return tex_ID;
+		return 0;
 	}
 
 	/*	OK, validated the header, let's load the image data	*/
 	result_string_pointer = "DDS header loaded and validated";
 
-	const int width = header.dwWidth;
-	const int height = header.dwHeight;
-	int uncompressed = 1 - ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) / DDPF_FOURCC;
-	int cubemap = ( header.sCaps.dwCaps2 & DDSCAPS2_CUBEMAP ) / DDSCAPS2_CUBEMAP;
+	const int uncompressed = 1 - ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) / DDPF_FOURCC;
+	const int cubemap = ( header.sCaps.dwCaps2 & DDSCAPS2_CUBEMAP ) / DDSCAPS2_CUBEMAP;
+	unsigned int DDS_main_size;
+	unsigned int format_type = GL_UNSIGNED_BYTE;
+	unsigned int internal_format = 0;
+	unsigned int block_size = 16;
 	if( uncompressed )
 	{
 		if( header.sPixelFormat.dwRGBBitCount == 8 )
@@ -2674,7 +2667,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 				block_size = 4;
 			}
 		}
-		DDS_main_size = width * height * block_size;
+		DDS_main_size = header.dwWidth * header.dwHeight * block_size;
 	}
 	else
 	{
@@ -2724,9 +2717,11 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			internal_format = SOIL_COMPRESSED_RG_RGTC2;
 			break;
 		}
-		DDS_main_size = ( ( width + 3 ) >> 2 ) * ( ( height + 3 ) >> 2 ) * block_size;
+		DDS_main_size = ( ( header.dwWidth + 3 ) >> 2 ) * ( ( header.dwHeight + 3 ) >> 2 ) * block_size;
 	}
 
+	unsigned int ogl_target_start, ogl_target_end;
+	unsigned int opengl_texture_type;
 	if( cubemap )
 	{
 		/* does the user want a cubemap?	*/
@@ -2761,15 +2756,17 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		opengl_texture_type = GL_TEXTURE_2D;
 	}
 
-	if( ( header.sCaps.dwCaps1 & DDSCAPS_MIPMAP ) && ( header.dwMipMapCount > 1 ) )
+	unsigned int mipmaps;
+	unsigned int DDS_full_size;
+	if( header.sCaps.dwCaps1 & DDSCAPS_MIPMAP && header.dwMipMapCount > 1 )
 	{
 		mipmaps = header.dwMipMapCount - 1;
 		DDS_full_size = DDS_main_size;
 
-		for( int i = 1; i <= mipmaps; ++i )
+		for( unsigned int i = 1; i <= mipmaps; ++i )
 		{
-			int w = width >> i;
-			int h = height >> i;
+			unsigned int w = header.dwWidth >> i;
+			unsigned int h = header.dwHeight >> i;
 			if( w < 1 ) { w = 1; }
 			if( h < 1 ) { h = 1; }
 			if( uncompressed )
@@ -2789,155 +2786,167 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		mipmaps = 0;
 		DDS_full_size = DDS_main_size;
 	}
-	DDS_data = (unsigned char *)malloc( DDS_full_size );
+
 	/*	got the image data RAM, create or use an existing OpenGL texture handle	*/
-	tex_ID = reuse_texture_ID;
+	unsigned int tex_ID = reuse_texture_ID;
 	if( tex_ID == 0 ) { glGenTextures( 1, &tex_ID ); }
 	/*  bind an OpenGL texture ID	*/
 	glBindTexture( opengl_texture_type, tex_ID );
-	/*	do this for each face of the cubemap!	*/
-	for( cf_target = ogl_target_start; cf_target <= ogl_target_end; ++cf_target )
+
+	const unsigned int faces = ogl_target_end - ogl_target_start + 1;
+	if ( faces * DDS_full_size > (unsigned int)buffer_length - buffer_index )
 	{
-		if( buffer_index + DDS_full_size <= (unsigned int)buffer_length )
+		glDeleteTextures( 1, &tex_ID );
+		result_string_pointer = "DDS file was too small for expected image data";
+		return 0;
+	}
+
+	if( uncompressed )
+	{
+		unsigned char * DDS_data = malloc( DDS_full_size );
+		if( NULL == DDS_data )
 		{
-			unsigned int byte_offset = DDS_main_size;
-			memcpy( (void *)DDS_data, (const void *)( &buffer[buffer_index] ), DDS_full_size );
+			result_string_pointer = "malloc failed";
+			return 0;
+		}
+		for(unsigned int cf_target = ogl_target_start; cf_target <= ogl_target_end; ++cf_target )
+		{
+			memcpy( DDS_data, &buffer[buffer_index], DDS_full_size );
 			buffer_index += DDS_full_size;
+			if( ( header.sPixelFormat.dwRBitMask == 0xff0000 ) &&
+			    ( ( block_size == 3 && internal_format == GL_RGB ) ||
+			      ( block_size == 4 && internal_format == GL_RGBA ) ) )
+			{
+				for( int i = 0; i < (int)DDS_full_size; i += block_size )
+				{
+					unsigned char temp = DDS_data[i];
+					DDS_data[i] = DDS_data[i + 2];
+					DDS_data[i + 2] = temp;
+				}
+			}
+			else if( block_size == 2 &&
+			         ( header.sPixelFormat.dwRBitMask == 0xf800 || header.sPixelFormat.dwRBitMask == 0x7c00 ) )
+			{
+				// convert to R5G5B5A1
+				for( int i = 0; i < (int)DDS_full_size; i += block_size )
+				{
+					unsigned short pixel = DDS_data[i] << 0 | DDS_data[i + 1] << 8;
+					char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 10 );
+					char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 5 );
+					char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
+					char a = 1;
+					if( header.sPixelFormat.dwAlphaBitMask != 0 )
+					{ a = ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 15; }
+					unsigned short pixel_new = ( r << 11 ) | ( g << 6 ) | ( b << 1 ) | a;
+					DDS_data[i] = ( pixel_new >> 0 ) & 0xff;
+					DDS_data[i + 1] = ( pixel_new >> 8 ) & 0xff;
+				}
+			}
+			else if( block_size == 2 && ( header.sPixelFormat.dwRBitMask == 0xf00 ) &&
+			         ( header.sPixelFormat.dwGBitMask == 0xf0 ) && ( header.sPixelFormat.dwBBitMask == 0xf ) &&
+			         ( header.sPixelFormat.dwAlphaBitMask == 0xf000 ) )
+			{
+				for( int i = 0; i < (int)DDS_full_size; i += block_size )
+				{
+					unsigned short pixel = DDS_data[i] << 0 | DDS_data[i + 1] << 8;
+					char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 8 );
+					char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 4 );
+					char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
+					char a = ( ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 12 );
+					unsigned short pixel_new = ( r << 12 ) | ( g << 8 ) | ( b << 4 ) | a;
+					DDS_data[i] = ( pixel_new >> 0 ) & 0xff;
+					DDS_data[i + 1] = ( pixel_new >> 8 ) & 0xff;
+				}
+			}
 			/*	upload the main chunk	*/
-			if( uncompressed )
-			{
-				if( ( header.sPixelFormat.dwRBitMask == 0xff0000 ) &&
-				    ( ( block_size == 3 && internal_format == GL_RGB ) ||
-				      ( block_size == 4 && internal_format == GL_RGBA ) ) )
-				{
-					for( int i = 0; i < (int)DDS_full_size; i += block_size )
-					{
-						unsigned char temp = DDS_data[i];
-						DDS_data[i] = DDS_data[i + 2];
-						DDS_data[i + 2] = temp;
-					}
-				}
-				else if( block_size == 2 &&
-				         ( header.sPixelFormat.dwRBitMask == 0xf800 || header.sPixelFormat.dwRBitMask == 0x7c00 ) )
-				{
-					// convert to R5G5B5A1
-					for( int i = 0; i < (int)DDS_full_size; i += block_size )
-					{
-						unsigned short pixel = DDS_data[i] << 0 | DDS_data[i + 1] << 8;
-						char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 10 );
-						char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 5 );
-						char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
-						char a = 1;
-						if( header.sPixelFormat.dwAlphaBitMask != 0 )
-						{ a = ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 15; }
-						unsigned short pixel_new = ( r << 11 ) | ( g << 6 ) | ( b << 1 ) | a;
-						DDS_data[i] = ( pixel_new >> 0 ) & 0xff;
-						DDS_data[i + 1] = ( pixel_new >> 8 ) & 0xff;
-					}
-				}
-				else if( block_size == 2 && ( header.sPixelFormat.dwRBitMask == 0xf00 ) &&
-				         ( header.sPixelFormat.dwGBitMask == 0xf0 ) && ( header.sPixelFormat.dwBBitMask == 0xf ) &&
-				         ( header.sPixelFormat.dwAlphaBitMask == 0xf000 ) )
-				{
-					for( int i = 0; i < (int)DDS_full_size; i += block_size )
-					{
-						unsigned short pixel = DDS_data[i] << 0 | DDS_data[i + 1] << 8;
-						char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 8 );
-						char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 4 );
-						char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
-						char a = ( ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 12 );
-						unsigned short pixel_new = ( r << 12 ) | ( g << 8 ) | ( b << 4 ) | a;
-						DDS_data[i] = ( pixel_new >> 0 ) & 0xff;
-						DDS_data[i + 1] = ( pixel_new >> 8 ) & 0xff;
-					}
-				}
-				glTexImage2D( cf_target, 0, internal_format, width, height, 0, internal_format, format_type, DDS_data );
-			}
-			else
-			{
-				soilGlCompressedTexImage2D( cf_target, 0, internal_format, width, height, 0, DDS_main_size, DDS_data );
-			}
+			glTexImage2D( cf_target, 0, internal_format, header.dwWidth, header.dwHeight, 0, internal_format, format_type, DDS_data );
+
+			unsigned int byte_offset = DDS_main_size;
+
 			/*	upload the mipmaps, if we have them	*/
-			for( int i = 1; i <= mipmaps; ++i )
+			for( unsigned int i = 1; i <= mipmaps; ++i )
 			{
-				int w, h, mip_size;
-				w = width >> i;
-				h = height >> i;
+				unsigned int w = header.dwWidth >> i;
+				unsigned int h = header.dwHeight >> i;
 				if( w < 1 ) { w = 1; }
 				if( h < 1 ) { h = 1; }
 				/*	upload this mipmap	*/
-				if( uncompressed )
-				{
-					mip_size = w * h * block_size;
-					glTexImage2D( cf_target, i, internal_format, w, h, 0, internal_format, format_type,
-					              &DDS_data[byte_offset] );
-				}
-				else
-				{
-					mip_size = ( ( w + 3 ) / 4 ) * ( ( h + 3 ) / 4 ) * block_size;
-					soilGlCompressedTexImage2D( cf_target, i, internal_format, w, h, 0, mip_size,
-					                            &DDS_data[byte_offset] );
-				}
+				const unsigned int mip_size = w * h * block_size;
+				glTexImage2D( cf_target, i, internal_format, w, h, 0, internal_format, format_type,
+				              &DDS_data[byte_offset] );
+
 				/*	and move to the next mipmap	*/
 				byte_offset += mip_size;
 			}
-			/*	it worked!	*/
-			result_string_pointer = "DDS file loaded";
 		}
-		else
+		free(DDS_data);
+	} else {
+		for(unsigned int cf_target = ogl_target_start; cf_target <= ogl_target_end; ++cf_target )
 		{
-			glDeleteTextures( 1, &tex_ID );
-			tex_ID = 0;
-			cf_target = ogl_target_end + 1;
-			result_string_pointer = "DDS file was too small for expected image data";
-		}
-	} /* end reading each face */
-	free(DDS_data);
+			/*	upload the main chunk	*/
+			soilGlCompressedTexImage2D( cf_target, 0, internal_format, header.dwWidth, header.dwHeight, 0, DDS_main_size, &buffer[buffer_index] );
 
-	if( tex_ID )
-	{
-		/*	did I have MIPmaps?	*/
-		if( mipmaps > 0 )
-		{
-			/*	instruct OpenGL to use the MIPmaps	*/
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
-		}
-		else
-		{
-			/*	instruct OpenGL _NOT_ to use the MIPmaps	*/
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-		}
-		/*	does the user want clamping, or wrapping?	*/
-		if( flags & SOIL_FLAG_TEXTURE_REPEATS )
-		{
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_S, GL_REPEAT );
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_T, GL_REPEAT );
-			glTexParameteri( opengl_texture_type, SOIL_TEXTURE_WRAP_R, GL_REPEAT );
-		}
-		else
-		{
-			unsigned int clamp_mode = SOIL_CLAMP_TO_EDGE;
-			/* unsigned int clamp_mode = GL_CLAMP; */
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_S, clamp_mode );
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_T, clamp_mode );
-			glTexParameteri( opengl_texture_type, SOIL_TEXTURE_WRAP_R, clamp_mode );
+			unsigned int byte_offset = DDS_main_size;
+
+			/*	upload the mipmaps, if we have them	*/
+			for( unsigned int i = 1; i <= mipmaps; ++i )
+			{
+				unsigned int w = header.dwWidth >> i;
+				unsigned int h = header.dwHeight >> i;
+				if( w < 1 ) { w = 1; }
+				if( h < 1 ) { h = 1; }
+
+				/*	upload this mipmap	*/
+				const unsigned int mip_size = ( ( w + 3 ) / 4 ) * ( ( h + 3 ) / 4 ) * block_size;
+				soilGlCompressedTexImage2D( cf_target, i, internal_format, w, h, 0, mip_size,
+				                            &buffer[buffer_index + byte_offset] );
+
+				/*	and move to the next mipmap	*/
+				byte_offset += mip_size;
+			}
+			buffer_index += DDS_full_size;
 		}
 	}
 
+	/*	did I have MIPmaps?	*/
+	if( mipmaps > 0 )
+	{
+		/*	instruct OpenGL to use the MIPmaps	*/
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
+	}
+	else
+	{
+		/*	instruct OpenGL _NOT_ to use the MIPmaps	*/
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+	}
+
+	/*	does the user want clamping, or wrapping?	*/
+	if( flags & SOIL_FLAG_TEXTURE_REPEATS )
+	{
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_S, GL_REPEAT );
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_T, GL_REPEAT );
+		glTexParameteri( opengl_texture_type, SOIL_TEXTURE_WRAP_R, GL_REPEAT );
+	}
+	else
+	{
+		unsigned int clamp_mode = SOIL_CLAMP_TO_EDGE;
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_S, clamp_mode );
+		glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_T, clamp_mode );
+		glTexParameteri( opengl_texture_type, SOIL_TEXTURE_WRAP_R, clamp_mode );
+	}
+
+	result_string_pointer = "DDS file loaded";
 	return tex_ID;
 }
 
 unsigned int SOIL_direct_load_DDS(
 		const char *filename,
-		unsigned int reuse_texture_ID,
-		int flags,
-		int loading_as_cubemap )
+		const unsigned int reuse_texture_ID,
+		const int flags,
+		const int loading_as_cubemap )
 {
-	FILE *f;
-	unsigned char *buffer;
-	size_t buffer_length, bytes_read;
 	unsigned int tex_ID = 0;
 	/*	error checks	*/
 	if( NULL == filename )
@@ -2945,7 +2954,7 @@ unsigned int SOIL_direct_load_DDS(
 		result_string_pointer = "NULL filename";
 		return 0;
 	}
-	f = fopen( filename, "rb" );
+	FILE *f = fopen(filename, "rb");
 	if( NULL == f )
 	{
 		/*	the file doesn't seem to exist (or be open-able)	*/
@@ -2953,25 +2962,32 @@ unsigned int SOIL_direct_load_DDS(
 		return 0;
 	}
 	fseek( f, 0, SEEK_END );
-	buffer_length = ftell( f );
+	const int buffer_length = ftell(f);
+	if( buffer_length == -1 )
+	{
+		result_string_pointer = "ftell failed";
+		fclose( f );
+		return 0;
+	}
 	fseek( f, 0, SEEK_SET );
-	buffer = (unsigned char *) malloc( buffer_length );
+	unsigned char *buffer = malloc(buffer_length);
 	if( NULL == buffer )
 	{
 		result_string_pointer = "malloc failed";
 		fclose( f );
 		return 0;
 	}
-	bytes_read = fread( (void*)buffer, 1, buffer_length, f );
+	const size_t bytes_read = fread(buffer, 1, buffer_length, f);
 	fclose( f );
 	if( bytes_read < buffer_length )
 	{
-		/*	huh?	*/
-		buffer_length = bytes_read;
+		result_string_pointer = "fread failed";
+		free(buffer);
+		return 0;
 	}
 	/*	now try to do the loading	*/
 	tex_ID = SOIL_direct_load_DDS_from_memory(
-		(const unsigned char *const)buffer, (int)buffer_length,
+		buffer, buffer_length,
 		reuse_texture_ID, flags, loading_as_cubemap );
 	free( buffer );
 	return tex_ID;
