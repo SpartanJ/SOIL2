@@ -91,6 +91,7 @@ if(NOT SOIL2_SKIP_HEADERS)
     set_property(TARGET soil2 PROPERTY PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h)
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_array_helper.h
         DESTINATION include/soil2
     )
 endif()
