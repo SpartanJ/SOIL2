@@ -1,4 +1,59 @@
 {
+  "SOIL2-mingw64-premake5": {
+    "build": [
+      {
+        "args": "--os=windows --cc=gcc gmake",
+        "command": "premake5",
+        "working_dir": ""
+      },
+      {
+        "args": "-C make/windows -j${nproc} config=${build_type}_${arch}",
+        "command": "mingw64-make",
+        "working_dir": ""
+      }
+    ],
+    "build_types": [
+      "debug",
+      "release"
+    ],
+    "clean": [
+      {
+        "args": "-C make/windows -j${nproc} config=${build_type}_${arch} clean",
+        "command": "mingw64-make",
+        "working_dir": ""
+      }
+    ],
+    "config": {
+      "clear_sys_env": false,
+      "strip_ansi_codes": false
+    },
+    "os": [
+      "freebsd",
+      "haiku",
+      "linux",
+      "macos",
+      "windows"
+    ],
+    "output_parser": {
+      "config": {
+        "relative_file_paths": true
+      }
+    },
+    "run": [
+      {
+        "args": "${project_root}/bin/soil2-test-debug.exe",
+        "command": "wine",
+        "name": "soil2-test-debug",
+        "working_dir": "${project_root}/bin/"
+      },
+      {
+        "args": "${project_root}/bin/soil2-test.exe",
+        "command": "wine",
+        "name": "soil2-test",
+        "working_dir": "${project_root}/bin/"
+      }
+    ]
+  },
   "SOIL2-premake4": {
     "build": [
       {
@@ -24,7 +79,8 @@
       }
     ],
     "config": {
-      "clear_sys_env": false
+      "clear_sys_env": false,
+      "strip_ansi_codes": false
     },
     "os": [
       "freebsd",
@@ -72,13 +128,14 @@
     ],
     "clean": [
       {
-        "args": "",
-        "command": "",
-        "working_dir": ""
+        "args": "-C make/${os} -j${nproc} config=${build_type}_${arch} clean",
+        "command": "make",
+        "working_dir": "${project_root}"
       }
     ],
     "config": {
-      "clear_sys_env": false
+      "clear_sys_env": false,
+      "strip_ansi_codes": false
     },
     "os": [
       "freebsd",
