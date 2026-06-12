@@ -42,9 +42,9 @@ jobs:
         make -C make/macosx/ -j$(sysctl -n hw.ncpu) config=debug_arm64
   Windows:
     runs-on: windows-latest
-    env:
-      MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v3
     - uses: actions/checkout@v2
     - name: Install dependencies
       shell: powershell
@@ -58,4 +58,4 @@ jobs:
     - name: Build
       shell: cmd
       run: |
-        "%MSBUILD_PATH%\MSBuild.exe" .\make\windows\SOIL2.sln -m /p:Platform="x64" /p:Configuration="release"
+        msbuild .\make\windows\SOIL2.sln -m /p:Platform="x64" /p:Configuration="release"
