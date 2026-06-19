@@ -97,15 +97,15 @@ workspace "SOIL2"
 
 	project "soil2-static-lib"
 		kind "StaticLib"
+		language "C"
 		targetdir("lib/" .. os.target() .. "/")
 		files { "src/SOIL2/*.c" }
 
 		filter "action:vs*"
-			buildoptions { "/TP" }
+			cdialect "C11"
 			defines { "_CRT_SECURE_NO_WARNINGS" }
 
 		filter "action:not vs*"
-			language "C"
 			buildoptions { "-Wall" }
 
 		filter "configurations:debug"
@@ -123,12 +123,13 @@ workspace "SOIL2"
 
 	project "soil2-shared-lib"
 		kind "SharedLib"
+		language "C"
 
 		targetdir("lib/" .. os.target() .. "/")
 		files { "src/SOIL2/*.c" }
 
 		filter "action:vs*"
-			buildoptions { "/TP" }
+			cdialect "C11"
 			defines { "_CRT_SECURE_NO_WARNINGS" }
 
 		filter { "system:windows", "action:not vs*" }
@@ -154,7 +155,6 @@ workspace "SOIL2"
 			links {"GL"}
 
 		filter "action:not vs*"
-			language "C"
 			buildoptions { "-Wall" }
 
 		filter "configurations:debug"
@@ -285,6 +285,7 @@ workspace "SOIL2"
 
 		filter "system:windows"
 			links {"opengl32","SDL2main","SDL2"}
+			defines { "_CRT_SECURE_NO_WARNINGS" }
 
 		filter "system:linux"
 			links {"GL","SDL2"}
@@ -317,6 +318,15 @@ workspace "SOIL2"
 			defines { "NDEBUG" }
 			optimize "On"
 			targetname "soil2-generate-dds-fixtures-release"
+
+		filter { "options:windows-vc-build", "system:windows", "platforms:x86" }
+			syslibdirs { "./" .. remote_sdl2_version .."/lib/x86" }
+
+		filter { "options:windows-vc-build", "system:windows", "platforms:x86_64" }
+			syslibdirs { "./" .. remote_sdl2_version .."/lib/x64" }
+
+		filter { "options:windows-vc-build", "system:windows" }
+			incdirs { "./" .. remote_sdl2_version .. "/include" }
 
 
     project "soil2-grid-atlas-test"

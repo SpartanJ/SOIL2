@@ -84,7 +84,10 @@ int
 
 /**
 	Converts an HDR image from an array
-	of unsigned chars (RGBE) to RGBdivA
+	of unsigned chars (RGBE) to RGBdivA.
+	If rescale_to_max is non-zero, one global scale is applied so the
+	largest decoded RGB component in the image uses the representation's
+	available range.
 	\return 0 if failed, otherwise returns 1
 **/
 int
@@ -97,7 +100,10 @@ int
 
 /**
 	Converts an HDR image from an array
-	of unsigned chars (RGBE) to RGBdivA2
+	of unsigned chars (RGBE) to RGBdivA2.
+	If rescale_to_max is non-zero, one global scale is applied so the
+	largest decoded RGB component in the image uses the representation's
+	available range.
 	\return 0 if failed, otherwise returns 1
 **/
 int

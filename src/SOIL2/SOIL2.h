@@ -160,9 +160,16 @@ enum
 /**
 	The types of internal fake HDR representations
 
+	These formats store HDR data in an 8-bit RGBA texture and require the
+	application's shader to reconstruct the HDR value:
+
 	SOIL_HDR_RGBE:		RGB * pow( 2.0, A - 128.0 )
 	SOIL_HDR_RGBdivA:	RGB / A
 	SOIL_HDR_RGBdivA2:	RGB / (A*A)
+
+	RGBdivA and RGBdivA2 use alpha as a per-pixel scale factor. They provide
+	different tradeoffs between range and precision. RGBE keeps the source
+	Radiance RGBE representation unchanged.
 **/
 enum
 {
@@ -235,11 +242,27 @@ unsigned int
 	);
 
 /**
-	Loads an HDR image from disk into an OpenGL texture.
-	\param filename the name of the file to upload as a texture
-	\param fake_HDR_format SOIL_HDR_RGBE, SOIL_HDR_RGBdivA, SOIL_HDR_RGBdivA2
-	\param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the texture ID (overwriting the old texture)
-	\param flags can be any of SOIL_FLAG_POWER_OF_TWO | SOIL_FLAG_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_MULTIPLY_ALPHA | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT
+	Loads a Radiance HDR image from disk and stores it in an 8-bit RGBA
+	OpenGL texture using one of SOIL's fake-HDR encodings. The application
+	must reconstruct the HDR values in its shader according to
+	fake_HDR_format.
+
+	\param filename the name of the Radiance HDR file to upload as a texture
+	\param fake_HDR_format one of SOIL_HDR_RGBE, SOIL_HDR_RGBdivA, or
+	       SOIL_HDR_RGBdivA2
+	\param rescale_to_max boolean value used by SOIL_HDR_RGBdivA and
+	       SOIL_HDR_RGBdivA2. When non-zero, SOIL finds the largest decoded
+	       R, G, or B component in the entire image and applies one global
+	       scale before encoding. The maximum component is scaled to 255 for
+	       RGBdivA or 255*255 for RGBdivA2. This preserves relative color and
+	       intensity ratios but changes the image's absolute exposure. When
+	       zero, the original RGBE scale is preserved. This parameter has no
+	       effect with SOIL_HDR_RGBE.
+	\param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
+	       texture ID (overwriting the old texture)
+	\param flags can be any of SOIL_FLAG_POWER_OF_TWO | SOIL_FLAG_MIPMAPS |
+	       SOIL_FLAG_TEXTURE_REPEATS | SOIL_FLAG_MULTIPLY_ALPHA |
+	       SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT
 	\return 0-failed, otherwise returns the OpenGL texture handle
 **/
 unsigned int

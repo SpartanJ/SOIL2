@@ -12,15 +12,17 @@
 	#define PLATFORM_WIN32
 	#include <windows.h>
 
-#if defined(_MSC_VER) && defined( UNICODE )
+#if defined( UNICODE )
 static std::string wcharToString(TCHAR* text) {
-	std::vector<char> buffer;
-	int size = WideCharToMultiByte(CP_UTF8, 0, text, -1, NULL, 0, NULL, NULL);
-	if (size > 0) {
-		buffer.resize(size);
-		WideCharToMultiByte(CP_UTF8, 0, text, -1, reinterpret_cast<LPSTR>(&buffer[0]), buffer.size(), NULL, NULL);
-	}
-	return std::string(&buffer[0]);
+	const int size = WideCharToMultiByte(CP_UTF8, 0, text, -1, NULL, 0, NULL, NULL);
+	if (size <= 0)
+		return std::string();
+
+	std::vector<char> buffer(static_cast<size_t>(size));
+	if (WideCharToMultiByte(CP_UTF8, 0, text, -1, buffer.data(), size, NULL, NULL) <= 0)
+		return std::string();
+
+	return std::string(buffer.data());
 }
 #endif
 
@@ -81,11 +83,11 @@ static std::string GetProcessPath() {
 	TCHAR szExt[_MAX_DIR];
 	GetModuleFileName(0, szDllName, _MAX_PATH);
 
-	#if ( defined( _MSCVER ) || defined( _MSC_VER ) )
-	_wsplitpath_s(szDllName, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFilename, _MAX_DIR, szExt, _MAX_DIR);
-	#else
-	_splitpath(szDllName, szDrive, szDir, szFilename, szExt);
-	#endif
+		#if ( defined( _MSCVER ) || defined( _MSC_VER ) )
+		_wsplitpath_s(szDllName, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFilename, _MAX_DIR, szExt, _MAX_DIR);
+		#else
+		_wsplitpath(szDllName, szDrive, szDir, szFilename, szExt);
+		#endif
 
 	return wcharToString(szDrive) + wcharToString(szDir);
 	#else
@@ -135,4 +137,3 @@ static std::string GetProcessPath() {
 std::string ResourcePath(std::string fileName) {
 	return GetProcessPath() + fileName;
 }
-
