@@ -28,7 +28,8 @@ MIT-0 (see LICENSE file)
     * PNG - non-interlaced (from stb_image documentation)
     * JPG - JPEG baseline (from stb_image documentation)
     * TGA - greyscale or RGB or RGBA or indexed, uncompressed or RLE
-    * DDS - BC1/BC2/BC3/BC3n/BC5u, cubemaps (see `DDS support` below)
+    * DDS - BC1/BC2/BC3/BC3n/BC5u/BC6H_UF16 and high-precision RGBA,
+      including cubemaps (see `DDS support` below)
     * PSD - (from stb_image documentation)
     * [QOI](https://github.com/phoboslab/qoi)
     * HDR - converted to LDR, unless loaded with *HDR* functions (RGBE or RGBdivA or RGBdivA2)
@@ -77,6 +78,20 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 * BC3 - Compress, decompress, direct GPU upload (a.k.a. DXT4, DXT5)
 * BC3n - direct GPU upload
 * BC5u - direct GPU upload (a.k.a. 3Dc, ATI2, RGTC2)
+* BC6H_UF16 - direct GPU upload (requires OpenGL BPTC texture compression support). BC6H stores
+  linear HDR values, so displaying it directly in a normalized framebuffer requires exposure and
+  tone mapping in the application's shader.
+* RGBA16 UNORM - direct GPU upload (DX10 and legacy D3DFMT_A16B16G16R16 DDS)
+* RGBA16 FLOAT - direct GPU upload (DX10 and legacy D3DFMT_A16B16G16R16F DDS)
+* RGBA32 FLOAT - direct GPU upload (DX10 and legacy D3DFMT_A32B32G32R32F DDS)
+
+Direct DDS upload supports 2D textures and cubemaps. DDS texture arrays and volume textures are not
+currently loaded directly.
+
+The `bin/test_*.dds` fixtures use procedural gradients and checkerboards created by SOIL2's
+`soil2_generate_dds_fixtures` test utility; they do not contain third-party image content. Pass the
+output directory as its first argument to regenerate them. Creating the BC6H fixture requires an
+OpenGL driver with BPTC support.
 
 **Difference between SOIL2 and SOIL:**
 --------------------------------------

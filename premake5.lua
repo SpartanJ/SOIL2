@@ -274,7 +274,50 @@ workspace "SOIL2"
 
 		filter { "options:windows-vc-build", "system:windows" }
 			incdirs { "./" .. remote_sdl2_version .. "/include" }
-	
+
+	project "soil2-generate-dds-fixtures"
+		kind "ConsoleApp"
+		language "C++"
+		files { "src/test/generate_DDS_fixtures.cpp" }
+
+		filter { "system:windows", "action:not vs*" }
+			links { "mingw32" }
+
+		filter "system:windows"
+			links {"opengl32","SDL2main","SDL2"}
+
+		filter "system:linux"
+			links {"GL","SDL2"}
+
+		filter "system:macosx"
+			links { "OpenGL.framework", "CoreFoundation.framework", get_backend_link_name("SDL2") }
+			buildoptions {"-F /Library/Frameworks"}
+			linkoptions {"-F /Library/Frameworks"}
+			includedirs { "/Library/Frameworks/SDL2.framework/Headers" }
+			defines { "GL_SILENCE_DEPRECATION" }
+			if not _OPTIONS["use-frameworks"] then
+				defines { "SOIL2_NO_FRAMEWORKS" }
+			end
+
+		filter "system:haiku"
+			links {"GL","SDL2"}
+
+		filter "system:bsd"
+			links {"GL","SDL2"}
+
+		filter "action:not vs*"
+			buildoptions { "-Wall" }
+
+		filter "configurations:debug"
+			defines { "DEBUG" }
+			symbols "On"
+			targetname "soil2-generate-dds-fixtures-debug"
+
+		filter "configurations:release"
+			defines { "NDEBUG" }
+			optimize "On"
+			targetname "soil2-generate-dds-fixtures-release"
+
 
     project "soil2-grid-atlas-test"
         kind "ConsoleApp"

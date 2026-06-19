@@ -154,6 +154,7 @@ int query_cubemap_capability( void );
 #define SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z	0x851A
 #define SOIL_PROXY_TEXTURE_CUBE_MAP			0x851B
 #define SOIL_MAX_CUBE_MAP_TEXTURE_SIZE		0x851C
+#define SOIL_TEXTURE_MAX_LEVEL				0x813D
 /*	for non-power-of-two texture	*/
 #define SOIL_IS_POW2( v ) ( ( v & ( v - 1 ) ) == 0 )
 static int has_NPOT_capability = SOIL_CAPABILITY_UNKNOWN;
@@ -168,13 +169,22 @@ static int has_DXT_capability = SOIL_CAPABILITY_UNKNOWN;
 int query_DXT_capability( void );
 static int has_3Dc_capability = SOIL_CAPABILITY_UNKNOWN;
 int query_3Dc_capability( void );
+static int has_BPTC_capability = SOIL_CAPABILITY_UNKNOWN;
+int query_BPTC_capability( void );
+static int has_texture_float_capability = SOIL_CAPABILITY_UNKNOWN;
+int query_texture_float_capability( void );
 #define SOIL_GL_SRGB			0x8C40
 #define SOIL_GL_SRGB_ALPHA		0x8C42
+#define SOIL_GL_RGBA16			0x805B
+#define SOIL_GL_RGBA16F			0x881A
+#define SOIL_GL_RGBA32F			0x8814
+#define SOIL_GL_HALF_FLOAT		0x140B
 #define SOIL_RGB_S3TC_DXT1		0x83F0
 #define SOIL_RGBA_S3TC_DXT1		0x83F1
 #define SOIL_RGBA_S3TC_DXT3		0x83F2
 #define SOIL_RGBA_S3TC_DXT5		0x83F3
 #define SOIL_COMPRESSED_RG_RGTC2	0x8DBD
+#define SOIL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT 0x8E8F
 #define SOIL_GL_COMPRESSED_SRGB_S3TC_DXT1_EXT  0x8C4C
 #define SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
 static int has_sRGB_capability = SOIL_CAPABILITY_UNKNOWN;
@@ -2574,10 +2584,13 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		DXT5 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '5' << 24 ),
 		ATI2 = ( 'A' << 0 ) | ( 'T' << 8 ) | ( 'I' << 16 ) | ( '2' << 24 ),
 		DX10 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( '1' << 16 ) | ( '0' << 24 ),
+		A16B16G16R16 = 36,
+		A16B16G16R16F = 113,
+		A32B32G32R32F = 116,
 	};
 
 	// DX10 has an extended header
-	DDS_HEADER_DXT10 dx10_header;
+	DDS_HEADER_DXT10 dx10_header = {0};
 	if (header.sPixelFormat.dwFourCC == DX10) {
 		if( buffer_length - buffer_index < (int)sizeof( DDS_HEADER_DXT10 ) )
 		{
@@ -2586,6 +2599,16 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		}
 		memcpy(&dx10_header, &buffer[buffer_index], sizeof(DDS_HEADER_DXT10));
 		buffer_index += sizeof(dx10_header);
+		if( dx10_header.resourceDimension != DDS_DIMENSION_TEXTURE2D )
+		{
+			result_string_pointer = "Only DX10 2D DDS resources are supported";
+			return 0;
+		}
+		if( dx10_header.arraySize != 1 )
+		{
+			result_string_pointer = "DX10 DDS texture arrays are not supported by this loader";
+			return 0;
+		}
 	}
 
 	// make sure it is a type we can upload
@@ -2595,6 +2618,9 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		&& header.sPixelFormat.dwFourCC != DXT5
 		&& header.sPixelFormat.dwFourCC != ATI2
 		&& header.sPixelFormat.dwFourCC != DX10
+		&& header.sPixelFormat.dwFourCC != A16B16G16R16
+		&& header.sPixelFormat.dwFourCC != A16B16G16R16F
+		&& header.sPixelFormat.dwFourCC != A32B32G32R32F
 	) {
 		return 0;
 	}
@@ -2602,13 +2628,48 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	/*	OK, validated the header, let's load the image data	*/
 	result_string_pointer = "DDS header loaded and validated";
 
-	const int uncompressed = 1 - ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) / DDPF_FOURCC;
-	const int cubemap = ( header.sCaps.dwCaps2 & DDSCAPS2_CUBEMAP ) / DDSCAPS2_CUBEMAP;
+	int block_compressed = 0;
+	const int cubemap = ( ( header.sCaps.dwCaps2 & DDSCAPS2_CUBEMAP ) != 0 ) ||
+	                    ( header.sPixelFormat.dwFourCC == DX10 &&
+	                      ( dx10_header.miscFlag & DDS_RESOURCE_MISC_TEXTURECUBE ) != 0 );
 	unsigned int DDS_main_size;
 	unsigned int format_type = GL_UNSIGNED_BYTE;
 	unsigned int internal_format = 0;
+	unsigned int external_format = 0;
 	unsigned int block_size = 16;
-	if( uncompressed )
+	int high_precision_format = 0;
+
+	if( header.sPixelFormat.dwFourCC == A16B16G16R16 ||
+	    ( header.sPixelFormat.dwFourCC == DX10 &&
+	      dx10_header.dxgiFormat == DXGI_FORMAT_R16G16B16A16_UNORM ) )
+	{
+		high_precision_format = 1;
+		internal_format = SOIL_GL_RGBA16;
+		external_format = GL_RGBA;
+		format_type = GL_UNSIGNED_SHORT;
+		block_size = 8;
+	}
+	else if( header.sPixelFormat.dwFourCC == A16B16G16R16F ||
+	         ( header.sPixelFormat.dwFourCC == DX10 &&
+	           dx10_header.dxgiFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ) )
+	{
+		high_precision_format = 1;
+		internal_format = SOIL_GL_RGBA16F;
+		external_format = GL_RGBA;
+		format_type = SOIL_GL_HALF_FLOAT;
+		block_size = 8;
+	}
+	else if( header.sPixelFormat.dwFourCC == A32B32G32R32F ||
+	         ( header.sPixelFormat.dwFourCC == DX10 &&
+	           dx10_header.dxgiFormat == DXGI_FORMAT_R32G32B32A32_FLOAT ) )
+	{
+		high_precision_format = 1;
+		internal_format = SOIL_GL_RGBA32F;
+		external_format = GL_RGBA;
+		format_type = GL_FLOAT;
+		block_size = 16;
+	}
+	else if( ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) == 0 )
 	{
 		if( header.sPixelFormat.dwRGBBitCount == 8 )
 		{
@@ -2667,29 +2728,11 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 				block_size = 4;
 			}
 		}
-		DDS_main_size = header.dwWidth * header.dwHeight * block_size;
+		external_format = internal_format;
 	}
 	else
 	{
-		if( header.sPixelFormat.dwFourCC == ATI2 )
-		{
-			if( query_3Dc_capability() != SOIL_CAPABILITY_PRESENT )
-			{
-				/*	we can't do it!	*/
-				result_string_pointer = "Direct upload of 3Dc images not supported by the OpenGL driver";
-				return 0;
-			}
-		}
-		else
-		{
-			if( query_DXT_capability() != SOIL_CAPABILITY_PRESENT )
-			{
-				/*	we can't do it!	*/
-				result_string_pointer = "Direct upload of S3TC images not supported by the OpenGL driver";
-				return 0;
-			}
-		}
-
+		block_compressed = 1;
 		switch( header.sPixelFormat.dwFourCC )
 		{
 		case DXT1:
@@ -2709,14 +2752,68 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			internal_format = SOIL_COMPRESSED_RG_RGTC2;
 			break;
 		case DX10:
-			if (dx10_header.dxgiFormat != DXGI_FORMAT_BC5_UNORM) {
-				result_string_pointer = "The DX10 reader only supports BC5 unorm at the moment";
+			switch( dx10_header.dxgiFormat )
+			{
+			case DXGI_FORMAT_BC5_UNORM:
+				block_size = 16;
+				internal_format = SOIL_COMPRESSED_RG_RGTC2;
+				break;
+			case DXGI_FORMAT_BC6H_UF16:
+				block_size = 16;
+				internal_format = SOIL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT;
+				break;
+			default:
+				result_string_pointer = "Unsupported DXGI format for direct DDS upload";
 				return 0;
 			}
-			block_size = 16;
-			internal_format = SOIL_COMPRESSED_RG_RGTC2;
 			break;
 		}
+	}
+
+	if( high_precision_format &&
+	    ( internal_format == SOIL_GL_RGBA16F || internal_format == SOIL_GL_RGBA32F ) &&
+	    query_texture_float_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		result_string_pointer = "Floating-point textures not supported by the OpenGL driver";
+		return 0;
+	}
+
+	if( !block_compressed )
+	{
+		DDS_main_size = header.dwWidth * header.dwHeight * block_size;
+	}
+	else
+	{
+		if( header.sPixelFormat.dwFourCC == ATI2 ||
+		    ( header.sPixelFormat.dwFourCC == DX10 &&
+		      dx10_header.dxgiFormat == DXGI_FORMAT_BC5_UNORM ) )
+		{
+			if( query_3Dc_capability() != SOIL_CAPABILITY_PRESENT )
+			{
+				/*	we can't do it!	*/
+				result_string_pointer = "Direct upload of 3Dc images not supported by the OpenGL driver";
+				return 0;
+			}
+		}
+		else if( header.sPixelFormat.dwFourCC == DX10 &&
+		         dx10_header.dxgiFormat == DXGI_FORMAT_BC6H_UF16 )
+		{
+			if( query_BPTC_capability() != SOIL_CAPABILITY_PRESENT )
+			{
+				result_string_pointer = "Direct upload of BPTC images not supported by the OpenGL driver";
+				return 0;
+			}
+		}
+		else
+		{
+			if( query_DXT_capability() != SOIL_CAPABILITY_PRESENT )
+			{
+				/*	we can't do it!	*/
+				result_string_pointer = "Direct upload of S3TC images not supported by the OpenGL driver";
+				return 0;
+			}
+		}
+
 		DDS_main_size = ( ( header.dwWidth + 3 ) >> 2 ) * ( ( header.dwHeight + 3 ) >> 2 ) * block_size;
 	}
 
@@ -2769,7 +2866,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			unsigned int h = header.dwHeight >> i;
 			if( w < 1 ) { w = 1; }
 			if( h < 1 ) { h = 1; }
-			if( uncompressed )
+			if( !block_compressed )
 			{
 				/*	uncompressed DDS, simple MIPmap size calculation	*/
 				DDS_full_size += w * h * block_size;
@@ -2801,7 +2898,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		return 0;
 	}
 
-	if( uncompressed )
+	if( !block_compressed )
 	{
 		unsigned char * DDS_data = (unsigned char*) malloc( DDS_full_size );
 		if( NULL == DDS_data )
@@ -2859,7 +2956,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 				}
 			}
 			/*	upload the main chunk	*/
-			glTexImage2D( cf_target, 0, internal_format, header.dwWidth, header.dwHeight, 0, internal_format, format_type, DDS_data );
+			glTexImage2D( cf_target, 0, internal_format, header.dwWidth, header.dwHeight, 0, external_format, format_type, DDS_data );
 
 			unsigned int byte_offset = DDS_main_size;
 
@@ -2872,7 +2969,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 				if( h < 1 ) { h = 1; }
 				/*	upload this mipmap	*/
 				const unsigned int mip_size = w * h * block_size;
-				glTexImage2D( cf_target, i, internal_format, w, h, 0, internal_format, format_type,
+				glTexImage2D( cf_target, i, internal_format, w, h, 0, external_format, format_type,
 				              &DDS_data[byte_offset] );
 
 				/*	and move to the next mipmap	*/
@@ -2911,12 +3008,16 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	/*	did I have MIPmaps?	*/
 	if( mipmaps > 0 )
 	{
+		/* A DDS may contain only part of the full mip chain. Restrict
+		   sampling to the uploaded levels so the texture stays complete. */
+		glTexParameteri( opengl_texture_type, SOIL_TEXTURE_MAX_LEVEL, mipmaps );
 		/*	instruct OpenGL to use the MIPmaps	*/
 		glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 		glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
 	}
 	else
 	{
+		glTexParameteri( opengl_texture_type, SOIL_TEXTURE_MAX_LEVEL, 0 );
 		/*	instruct OpenGL _NOT_ to use the MIPmaps	*/
 		glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 		glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
@@ -3617,6 +3718,47 @@ int query_3Dc_capability(void) {
 	}
 	/*	let the user know if we can do DXT or not	*/
 	return has_3Dc_capability;
+}
+
+int query_BPTC_capability(void) {
+	if (has_BPTC_capability == SOIL_CAPABILITY_UNKNOWN)
+	{
+		if (0 == SOIL_GL_ExtensionSupported("GL_ARB_texture_compression_bptc") &&
+		    0 == SOIL_GL_ExtensionSupported("GL_EXT_texture_compression_bptc"))
+		{
+			has_BPTC_capability = SOIL_CAPABILITY_NONE;
+		}
+		else
+		{
+			P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr = get_glCompressedTexImage2D_addr();
+			if (NULL == ext_addr)
+			{
+				has_BPTC_capability = SOIL_CAPABILITY_NONE;
+			}
+			else
+			{
+				soilGlCompressedTexImage2D = ext_addr;
+				has_BPTC_capability = SOIL_CAPABILITY_PRESENT;
+			}
+		}
+	}
+	return has_BPTC_capability;
+}
+
+int query_texture_float_capability(void) {
+	if (has_texture_float_capability == SOIL_CAPABILITY_UNKNOWN)
+	{
+		if (0 == SOIL_GL_ExtensionSupported("GL_ARB_texture_float") &&
+		    !isAtLeastGL3())
+		{
+			has_texture_float_capability = SOIL_CAPABILITY_NONE;
+		}
+		else
+		{
+			has_texture_float_capability = SOIL_CAPABILITY_PRESENT;
+		}
+	}
+	return has_texture_float_capability;
 }
 
 int query_PVR_capability( void )

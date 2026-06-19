@@ -220,6 +220,9 @@ typedef struct {
     uint32_t miscFlags2;
 } DDS_HEADER_DXT10;
 
+#define DDS_DIMENSION_TEXTURE2D 3
+#define DDS_RESOURCE_MISC_TEXTURECUBE 0x4
+
 /*	the following constants were copied directly off the MSDN website	*/
 
 /*	The dwFlags member of the original DDSURFACEDESC2 structure

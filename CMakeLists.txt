@@ -70,6 +70,11 @@ if(SOIL2_BUILD_TESTS)
     )
     target_link_libraries(soil2_perf_test soil2 SDL2::SDL2 OpenGL::GL)
 
+    add_executable(soil2_generate_dds_fixtures
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/test/generate_DDS_fixtures.cpp
+    )
+    target_link_libraries(soil2_generate_dds_fixtures SDL2::SDL2 OpenGL::GL)
+
     # Create symlink to test images
     add_custom_command(
         TARGET soil2_test PRE_BUILD
