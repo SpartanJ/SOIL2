@@ -8,6 +8,9 @@
 
 #include "../SOIL2/image_DXT.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../SOIL2/stb_image_write.h"
+
 #define NO_SDL_GLEXT
 #if ( ( defined( _MSCVER ) || defined( _MSC_VER ) ) || defined( __APPLE_CC__ ) || defined ( __APPLE__ ) ) && !defined( SOIL2_NO_FRAMEWORKS )
 	#include <SDL.h>
@@ -179,6 +182,32 @@ static int write_high_precision_fixtures( const std::string& output_dir )
 		           source.data(), source.size() * sizeof( float ), 0 );
 }
 
+static int write_hdr_fixture( const std::string& output_dir )
+{
+	std::vector<float> rgb( FIXTURE_WIDTH * FIXTURE_HEIGHT * 3 );
+	for( int y = 0; y < FIXTURE_HEIGHT; ++y )
+	{
+		for( int x = 0; x < FIXTURE_WIDTH; ++x )
+		{
+			const float u = (float)x / (float)( FIXTURE_WIDTH - 1 );
+			const float v = (float)y / (float)( FIXTURE_HEIGHT - 1 );
+			const float checker = ( ( x / 4 + y / 4 ) & 1 ) ? 0.5f : 1.0f;
+			const size_t offset = ( (size_t)y * FIXTURE_WIDTH + x ) * 3;
+			rgb[offset + 0] = ( 0.25f + u * 7.75f ) * checker;
+			rgb[offset + 1] = ( 0.125f + v * 3.875f ) * checker;
+			rgb[offset + 2] = ( 0.5f + ( 1.0f - u * v ) * 1.5f ) * checker;
+		}
+	}
+
+	const std::string path = output_dir + "/test_native_hdr.hdr";
+	if( !stbi_write_hdr( path.c_str(), FIXTURE_WIDTH, FIXTURE_HEIGHT, 3, rgb.data() ) )
+	{
+		fprintf( stderr, "Could not write %s\n", path.c_str() );
+		return 0;
+	}
+	return 1;
+}
+
 static int encode_bc6h_face( const std::vector<float>& rgba, std::vector<unsigned char>* blocks )
 {
 	std::vector<float> rgb( FIXTURE_WIDTH * FIXTURE_HEIGHT * 3 );
@@ -240,6 +269,8 @@ int main( int argc, char** argv )
 
 	if( !write_high_precision_fixtures( output_dir ) )
 		return 1;
+	if( !write_hdr_fixture( output_dir ) )
+		return 1;
 
 	if( SDL_Init( SDL_INIT_VIDEO ) != 0 )
 	{
@@ -276,6 +307,6 @@ int main( int argc, char** argv )
 	SDL_Quit();
 
 	if( success )
-		printf( "Generated procedural DDS fixtures in %s\n", output_dir.c_str() );
+		printf( "Generated procedural DDS and HDR fixtures in %s\n", output_dir.c_str() );
 	return success ? 0 : 1;
 }

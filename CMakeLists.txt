@@ -10,7 +10,6 @@ add_library(soil2
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/image_helper.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/SOIL2.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/wfETC.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/common/common.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/pkm_helper.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/pvr_helper.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SOIL2/stb_image.h"
@@ -74,6 +73,11 @@ if(SOIL2_BUILD_TESTS)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/test/generate_DDS_fixtures.cpp
     )
     target_link_libraries(soil2_generate_dds_fixtures SDL2::SDL2 OpenGL::GL)
+
+    add_executable(soil2_test_hdr
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/test/test_HDR.cpp
+    )
+    target_link_libraries(soil2_test_hdr soil2 SDL2::SDL2 OpenGL::GL)
 
     # Create symlink to test images
     add_custom_command(

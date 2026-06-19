@@ -30,9 +30,21 @@ extern "C" {
    Safe to call with NULL or partially-initialized arrays. */
 void SOIL_image_array_free(SOIL_ImageArray *imgArray);
 
+/* Frees floating-point image layers and clears their pointers. */
+void image_array_free_f32( float **data, int layers );
+
 /* Vertically flips all layers in-place.
    Does nothing if imgArray is NULL or invalid. */
 void image_array_invert_y(SOIL_ImageArray *imgArray);
+
+/* Vertically flips floating-point image layers in-place. */
+void image_array_invert_y_f32(
+	float **data,
+	int layers,
+	int width,
+	int height,
+	int channels
+);
 
 /* Premultiplies RGB channels by alpha (if present).
    Requires channels >= 4; otherwise does nothing. */
@@ -49,6 +61,38 @@ void image_array_to_YCoCg(SOIL_ImageArray *imgArray);
 /* Resizes all layers to the nearest power-of-two dimensions.
    Returns non-zero on success, zero on failure. */
 int image_array_resize_POT(SOIL_ImageArray *imgArray);
+
+/* Resizes floating-point image layers to explicit dimensions.
+   The function replaces and frees each non-NULL layer on success. */
+int image_array_resize_f32(
+	float **data,
+	int layers,
+	int channels,
+	int old_width,
+	int old_height,
+	int new_width,
+	int new_height
+);
+
+/* Resizes floating-point image layers to power-of-two dimensions. */
+int image_array_resize_POT_f32(
+	float **data,
+	int layers,
+	int channels,
+	int *width,
+	int *height
+);
+
+/* Creates the next floating-point mip level using a box filter.
+   The caller owns the returned buffer. */
+float *image_array_make_next_mipmap_f32(
+	const float *data,
+	int channels,
+	int width,
+	int height,
+	int *new_width,
+	int *new_height
+);
 
 /* Reduces all layers so that width and height do not exceed max_size.
    Aspect ratio is preserved.

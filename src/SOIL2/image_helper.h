@@ -13,6 +13,9 @@
 extern "C" {
 #endif
 
+/** Returns the smallest power of two greater than or equal to value. */
+int image_next_power_of_two( int value );
+
 /**
 	This function upscales an image.
 	Not to be used to create MIPmaps,
@@ -25,6 +28,16 @@ int
 		const unsigned char* const orig,
 		int width, int height, int channels,
 		unsigned char* resampled,
+		int resampled_width, int resampled_height
+	);
+
+/** Bilinear resize for floating-point image data. */
+int
+	resize_image_f32
+	(
+		const float* const orig,
+		int width, int height, int channels,
+		float* resampled,
 		int resampled_width, int resampled_height
 	);
 

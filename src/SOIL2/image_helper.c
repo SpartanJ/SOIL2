@@ -10,6 +10,16 @@
 #include <stdlib.h>
 #include <math.h>
 
+int image_next_power_of_two( int value )
+{
+	int result = 1;
+	while( result < value && result <= 0x3fffffff )
+	{
+		result <<= 1;
+	}
+	return result;
+}
+
 /*	Upscaling the image uses simple bilinear interpolation	*/
 int
 	up_scale_image
@@ -40,10 +50,10 @@ int
     dy = (height - 1.0f) / (resampled_height - 1.0f);
     for ( y = 0; y < resampled_height; ++y )
     {
-    	/* find the base y index and fractional offset from that	*/
-    	float sampley = y * dy;
-    	int inty = (int)sampley;
-    	/*	if( inty < 0 ) { inty = 0; } else	*/
+		/* find the base y index and fractional offset from that	*/
+		float sampley = y * dy;
+		int inty = (int)sampley;
+		/*	if( inty < 0 ) { inty = 0; } else	*/
 		if( inty > height - 2 ) { inty = height - 2; }
 		sampley -= inty;
         for ( x = 0; x < resampled_width; ++x )
@@ -59,7 +69,7 @@ int
 			base_index = (inty * width + intx) * channels;
             for ( c = 0; c < channels; ++c )
             {
-            	/*	do the sampling	*/
+				/*	do the sampling	*/
 				float value = 0.5f;
 				value += orig[base_index]
 							*(1.0f-samplex)*(1.0f-sampley);
@@ -71,14 +81,69 @@ int
 							*(samplex)*(sampley);
 				/*	move to the next channel	*/
 				++base_index;
-            	/*	save the new value	*/
-            	resampled[y*resampled_width*channels+x*channels+c] =
+				/*	save the new value	*/
+				resampled[y*resampled_width*channels+x*channels+c] =
 						(unsigned char)(value);
             }
         }
     }
     /*	done	*/
     return 1;
+}
+
+int
+	resize_image_f32
+	(
+		const float* const orig,
+		int width, int height, int channels,
+		float* resampled,
+		int resampled_width, int resampled_height
+	)
+{
+	float dx, dy;
+	int x, y, c;
+
+	if( width < 1 || height < 1 ||
+		resampled_width < 1 || resampled_height < 1 ||
+		channels < 1 || orig == NULL || resampled == NULL )
+	{
+		return 0;
+	}
+
+	dx = resampled_width > 1 ?
+		(width - 1.0f) / (resampled_width - 1.0f) : 0.0f;
+	dy = resampled_height > 1 ?
+		(height - 1.0f) / (resampled_height - 1.0f) : 0.0f;
+
+	for( y = 0; y < resampled_height; ++y )
+	{
+		const float sample_y = y * dy;
+		const int y0 = (int)sample_y;
+		const int y1 = y0 + 1 < height ? y0 + 1 : y0;
+		const float fy = sample_y - y0;
+
+		for( x = 0; x < resampled_width; ++x )
+		{
+			const float sample_x = x * dx;
+			const int x0 = (int)sample_x;
+			const int x1 = x0 + 1 < width ? x0 + 1 : x0;
+			const float fx = sample_x - x0;
+
+			for( c = 0; c < channels; ++c )
+			{
+				const float top =
+					orig[(y0 * width + x0) * channels + c] * (1.0f - fx) +
+					orig[(y0 * width + x1) * channels + c] * fx;
+				const float bottom =
+					orig[(y1 * width + x0) * channels + c] * (1.0f - fx) +
+					orig[(y1 * width + x1) * channels + c] * fx;
+				resampled[(y * resampled_width + x) * channels + c] =
+					top * (1.0f - fy) + bottom * fy;
+			}
+		}
+	}
+
+	return 1;
 }
 
 int

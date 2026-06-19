@@ -1,7 +1,7 @@
 /*
- 	Fork by Martin Lucas Golini
+	Fork by Martin Lucas Golini
 
- 	Original author
+	Original author
 	Jonathan Dummer
 	2007-07-26-10.36
 
@@ -176,6 +176,8 @@ int query_texture_float_capability( void );
 #define SOIL_GL_SRGB			0x8C40
 #define SOIL_GL_SRGB_ALPHA		0x8C42
 #define SOIL_GL_RGBA16			0x805B
+#define SOIL_GL_RGB16F			0x881B
+#define SOIL_GL_RGB32F			0x8815
 #define SOIL_GL_RGBA16F			0x881A
 #define SOIL_GL_RGBA32F			0x8814
 #define SOIL_GL_HALF_FLOAT		0x140B
@@ -595,6 +597,539 @@ unsigned int
 	/*	and nuke the image data	*/
 	free( img );
 	/*	and return the handle, such as it is	*/
+	return tex_id;
+}
+
+typedef struct
+{
+	float *data;
+	int width;
+	int height;
+} SOIL_HDR_image;
+
+static int SOIL_HDR_validate_options(
+	int hdr_texture_format,
+	unsigned int flags,
+	unsigned int *internal_format )
+{
+	const unsigned int supported_flags =
+		SOIL_FLAG_POWER_OF_TWO |
+		SOIL_FLAG_MIPMAPS |
+		SOIL_FLAG_GL_MIPMAPS |
+		SOIL_FLAG_TEXTURE_REPEATS |
+		SOIL_FLAG_INVERT_Y;
+
+	if( hdr_texture_format == SOIL_HDR_TEXTURE_RGB16F )
+	{
+		*internal_format = SOIL_GL_RGB16F;
+	}
+	else if( hdr_texture_format == SOIL_HDR_TEXTURE_RGB32F )
+	{
+		*internal_format = SOIL_GL_RGB32F;
+	}
+	else
+	{
+		result_string_pointer = "Invalid native HDR texture format specified";
+		return 0;
+	}
+
+	if( flags & ~supported_flags )
+	{
+		result_string_pointer = "Unsupported flags for native HDR texture";
+		return 0;
+	}
+
+	if( query_texture_float_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		result_string_pointer = "Floating-point textures not supported by the OpenGL driver";
+		return 0;
+	}
+
+	if( ( flags & SOIL_FLAG_GL_MIPMAPS ) &&
+		query_gen_mipmap_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		result_string_pointer = "OpenGL mipmap generation not supported by the OpenGL driver";
+		return 0;
+	}
+
+	return 1;
+}
+
+static int SOIL_HDR_upload_levels(
+	unsigned int target,
+	unsigned int internal_format,
+	const float *data,
+	int width,
+	int height,
+	unsigned int flags )
+{
+	const float *level_data = data;
+	float *allocated_level = NULL;
+	int level_width = width;
+	int level_height = height;
+	int level = 0;
+
+	for( ;; )
+	{
+		glTexImage2D(
+			target, level, internal_format, level_width, level_height, 0,
+			GL_RGB, GL_FLOAT, level_data );
+		if( glGetError() != GL_NO_ERROR )
+		{
+			free( allocated_level );
+			result_string_pointer = "Failed to upload native HDR texture";
+			return 0;
+		}
+
+		if( !( flags & SOIL_FLAG_MIPMAPS ) ||
+			( flags & SOIL_FLAG_GL_MIPMAPS ) ||
+			(level_width == 1 && level_height == 1) )
+		{
+			break;
+		}
+
+		{
+			int next_width, next_height;
+			float *next_level = image_array_make_next_mipmap_f32(
+				level_data, 3, level_width, level_height,
+				&next_width, &next_height );
+			if( next_level == NULL )
+			{
+				free( allocated_level );
+				result_string_pointer = "Failed to create native HDR texture mipmap";
+				return 0;
+			}
+			free( allocated_level );
+			allocated_level = next_level;
+			level_data = allocated_level;
+			level_width = next_width;
+			level_height = next_height;
+			++level;
+		}
+	}
+
+	free( allocated_level );
+	return 1;
+}
+
+static unsigned int SOIL_internal_create_OGL_HDR_texture(
+	SOIL_HDR_image *images,
+	int image_count,
+	int hdr_texture_format,
+	unsigned int reuse_texture_ID,
+	unsigned int flags,
+	int cubemap )
+{
+	unsigned int internal_format;
+	unsigned int texture_type = cubemap ? SOIL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
+	unsigned int tex_id = reuse_texture_ID;
+	int created_texture = 0;
+	int max_supported_size;
+	int target_width;
+	int target_height;
+	int image_index;
+	float *image_data[6];
+	GLint unpack_alignment;
+
+	if( !SOIL_HDR_validate_options( hdr_texture_format, flags, &internal_format ) )
+	{
+		return 0;
+	}
+	if( cubemap && query_cubemap_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		result_string_pointer = "No cube map capability present";
+		return 0;
+	}
+
+	for( image_index = 1; image_index < image_count; ++image_index )
+	{
+		if( images[image_index].width != images[0].width ||
+			images[image_index].height != images[0].height )
+		{
+			result_string_pointer = "Native HDR cubemap faces must have identical dimensions";
+			return 0;
+		}
+	}
+	if( cubemap && images[0].width != images[0].height )
+	{
+		result_string_pointer = "Native HDR cubemap faces must be square";
+		return 0;
+	}
+
+	glGetIntegerv(
+		cubemap ? SOIL_MAX_CUBE_MAP_TEXTURE_SIZE : GL_MAX_TEXTURE_SIZE,
+		&max_supported_size );
+	if( max_supported_size < 1 )
+	{
+		result_string_pointer = "Invalid maximum OpenGL texture size";
+		return 0;
+	}
+
+	target_width = images[0].width;
+	target_height = images[0].height;
+	for( image_index = 0; image_index < image_count; ++image_index )
+	{
+		image_data[image_index] = images[image_index].data;
+	}
+	if( ( flags & SOIL_FLAG_POWER_OF_TWO ) ||
+		query_NPOT_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		const int resized = image_array_resize_POT_f32(
+			image_data, image_count, 3, &target_width, &target_height );
+		for( image_index = 0; image_index < image_count; ++image_index )
+		{
+			images[image_index].data = image_data[image_index];
+			images[image_index].width = target_width;
+			images[image_index].height = target_height;
+		}
+		if( !resized )
+		{
+			result_string_pointer = "Failed to resize native HDR image array to POT";
+			return 0;
+		}
+	}
+	if( target_width > max_supported_size )
+	{
+		target_width = max_supported_size;
+	}
+	if( target_height > max_supported_size )
+	{
+		target_height = max_supported_size;
+	}
+
+	if( images[0].width != target_width || images[0].height != target_height )
+	{
+		const int old_width = images[0].width;
+		const int old_height = images[0].height;
+		const int resized = image_array_resize_f32(
+			image_data, image_count, 3,
+			old_width, old_height, target_width, target_height );
+		for( image_index = 0; image_index < image_count; ++image_index )
+		{
+			images[image_index].data = image_data[image_index];
+			images[image_index].width = target_width;
+			images[image_index].height = target_height;
+		}
+		if( !resized )
+		{
+			result_string_pointer = "Failed to resize native HDR image array";
+			return 0;
+		}
+	}
+	if( flags & SOIL_FLAG_INVERT_Y )
+	{
+		image_array_invert_y_f32(
+			image_data, image_count, target_width, target_height, 3 );
+	}
+
+	while( glGetError() != GL_NO_ERROR )
+	{
+		/* discard errors caused by earlier OpenGL calls */
+	}
+
+	if( tex_id == 0 )
+	{
+		glGenTextures( 1, &tex_id );
+		created_texture = 1;
+	}
+	if( tex_id == 0 || glGetError() != GL_NO_ERROR )
+	{
+		if( created_texture && tex_id != 0 )
+		{
+			glDeleteTextures( 1, &tex_id );
+		}
+		result_string_pointer = "Failed to generate an OpenGL texture name; missing OpenGL context?";
+		return 0;
+	}
+
+	glBindTexture( texture_type, tex_id );
+	if( glGetError() != GL_NO_ERROR )
+	{
+		if( created_texture )
+		{
+			glDeleteTextures( 1, &tex_id );
+		}
+		result_string_pointer = "Failed to bind native HDR texture";
+		return 0;
+	}
+
+	glGetIntegerv( GL_UNPACK_ALIGNMENT, &unpack_alignment );
+	if( unpack_alignment != 1 )
+	{
+		glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
+	}
+
+	for( image_index = 0; image_index < image_count; ++image_index )
+	{
+		const unsigned int target = cubemap ?
+			SOIL_TEXTURE_CUBE_MAP_POSITIVE_X + (unsigned int)image_index :
+			GL_TEXTURE_2D;
+		if( !SOIL_HDR_upload_levels(
+				target, internal_format, images[image_index].data,
+				target_width, target_height, flags ) )
+		{
+			if( unpack_alignment != 1 )
+			{
+				glPixelStorei( GL_UNPACK_ALIGNMENT, unpack_alignment );
+			}
+			if( created_texture )
+			{
+				glDeleteTextures( 1, &tex_id );
+			}
+			return 0;
+		}
+	}
+
+	if( flags & SOIL_FLAG_GL_MIPMAPS )
+	{
+		soilGlGenerateMipmap( texture_type );
+		if( glGetError() != GL_NO_ERROR )
+		{
+			if( unpack_alignment != 1 )
+			{
+				glPixelStorei( GL_UNPACK_ALIGNMENT, unpack_alignment );
+			}
+			if( created_texture )
+			{
+				glDeleteTextures( 1, &tex_id );
+			}
+			result_string_pointer = "Failed to generate native HDR texture mipmaps";
+			return 0;
+		}
+	}
+
+	if( flags & ( SOIL_FLAG_MIPMAPS | SOIL_FLAG_GL_MIPMAPS ) )
+	{
+		glTexParameteri( texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
+	}
+	else
+	{
+		glTexParameteri( texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+	}
+	glTexParameteri( texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+	glTexParameteri(
+		texture_type, GL_TEXTURE_WRAP_S,
+		(flags & SOIL_FLAG_TEXTURE_REPEATS) ? GL_REPEAT : SOIL_CLAMP_TO_EDGE );
+	glTexParameteri(
+		texture_type, GL_TEXTURE_WRAP_T,
+		(flags & SOIL_FLAG_TEXTURE_REPEATS) ? GL_REPEAT : SOIL_CLAMP_TO_EDGE );
+	if( cubemap )
+	{
+		glTexParameteri(
+			texture_type, SOIL_TEXTURE_WRAP_R,
+			(flags & SOIL_FLAG_TEXTURE_REPEATS) ? GL_REPEAT : SOIL_CLAMP_TO_EDGE );
+	}
+
+	if( unpack_alignment != 1 )
+	{
+		glPixelStorei( GL_UNPACK_ALIGNMENT, unpack_alignment );
+	}
+	if( glGetError() != GL_NO_ERROR )
+	{
+		if( created_texture )
+		{
+			glDeleteTextures( 1, &tex_id );
+		}
+		result_string_pointer = "Failed to configure native HDR texture";
+		return 0;
+	}
+
+	result_string_pointer = "HDR image loaded as a native floating-point OpenGL texture";
+	return tex_id;
+}
+
+static int SOIL_HDR_load_file( const char *filename, SOIL_HDR_image *image )
+{
+	int channels;
+	if( filename == NULL )
+	{
+		result_string_pointer = "Invalid HDR image filename";
+		return 0;
+	}
+	if( !stbi_is_hdr( filename ) )
+	{
+		result_string_pointer = "Image is not a Radiance HDR file";
+		return 0;
+	}
+	image->data = stbi_loadf(
+		filename, &image->width, &image->height, &channels, 3 );
+	if( image->data == NULL )
+	{
+		result_string_pointer = stbi_failure_reason();
+		return 0;
+	}
+	return 1;
+}
+
+static int SOIL_HDR_load_memory(
+	const unsigned char *buffer,
+	int buffer_length,
+	SOIL_HDR_image *image )
+{
+	int channels;
+	if( buffer == NULL || buffer_length < 1 )
+	{
+		result_string_pointer = "Invalid HDR image buffer";
+		return 0;
+	}
+	if( !stbi_is_hdr_from_memory( buffer, buffer_length ) )
+	{
+		result_string_pointer = "Image is not a Radiance HDR file";
+		return 0;
+	}
+	image->data = stbi_loadf_from_memory(
+		buffer, buffer_length,
+		&image->width, &image->height, &channels, 3 );
+	if( image->data == NULL )
+	{
+		result_string_pointer = stbi_failure_reason();
+		return 0;
+	}
+	return 1;
+}
+
+static void SOIL_HDR_free_images( SOIL_HDR_image *images, int image_count )
+{
+	float *image_data[6];
+	int image_index;
+	for( image_index = 0; image_index < image_count; ++image_index )
+	{
+		image_data[image_index] = images[image_index].data;
+	}
+	image_array_free_f32( image_data, image_count );
+	for( image_index = 0; image_index < image_count; ++image_index )
+	{
+		images[image_index].data = NULL;
+	}
+}
+
+unsigned int SOIL_load_OGL_HDR_texture_f32(
+	const char *filename,
+	int hdr_texture_format,
+	unsigned int reuse_texture_ID,
+	unsigned int flags )
+{
+	SOIL_HDR_image image = { NULL, 0, 0 };
+	unsigned int tex_id;
+	if( !SOIL_HDR_load_file( filename, &image ) )
+	{
+		return 0;
+	}
+	tex_id = SOIL_internal_create_OGL_HDR_texture(
+		&image, 1, hdr_texture_format, reuse_texture_ID, flags, 0 );
+	SOIL_HDR_free_images( &image, 1 );
+	return tex_id;
+}
+
+unsigned int SOIL_load_OGL_HDR_texture_f32_from_memory(
+	const unsigned char *const buffer,
+	int buffer_length,
+	int hdr_texture_format,
+	unsigned int reuse_texture_ID,
+	unsigned int flags )
+{
+	SOIL_HDR_image image = { NULL, 0, 0 };
+	unsigned int tex_id;
+	if( !SOIL_HDR_load_memory( buffer, buffer_length, &image ) )
+	{
+		return 0;
+	}
+	tex_id = SOIL_internal_create_OGL_HDR_texture(
+		&image, 1, hdr_texture_format, reuse_texture_ID, flags, 0 );
+	SOIL_HDR_free_images( &image, 1 );
+	return tex_id;
+}
+
+unsigned int SOIL_load_OGL_HDR_cubemap_f32(
+	const char *x_pos_file,
+	const char *x_neg_file,
+	const char *y_pos_file,
+	const char *y_neg_file,
+	const char *z_pos_file,
+	const char *z_neg_file,
+	int hdr_texture_format,
+	unsigned int reuse_texture_ID,
+	unsigned int flags )
+{
+	const char *files[6];
+	SOIL_HDR_image images[6] = {
+		{ NULL, 0, 0 }, { NULL, 0, 0 }, { NULL, 0, 0 },
+		{ NULL, 0, 0 }, { NULL, 0, 0 }, { NULL, 0, 0 }
+	};
+	unsigned int tex_id;
+	int image_index;
+
+	files[0] = x_pos_file;
+	files[1] = x_neg_file;
+	files[2] = y_pos_file;
+	files[3] = y_neg_file;
+	files[4] = z_pos_file;
+	files[5] = z_neg_file;
+	for( image_index = 0; image_index < 6; ++image_index )
+	{
+		if( !SOIL_HDR_load_file( files[image_index], &images[image_index] ) )
+		{
+			SOIL_HDR_free_images( images, 6 );
+			return 0;
+		}
+	}
+	tex_id = SOIL_internal_create_OGL_HDR_texture(
+		images, 6, hdr_texture_format, reuse_texture_ID, flags, 1 );
+	SOIL_HDR_free_images( images, 6 );
+	return tex_id;
+}
+
+unsigned int SOIL_load_OGL_HDR_cubemap_f32_from_memory(
+	const unsigned char *const x_pos_buffer,
+	int x_pos_buffer_length,
+	const unsigned char *const x_neg_buffer,
+	int x_neg_buffer_length,
+	const unsigned char *const y_pos_buffer,
+	int y_pos_buffer_length,
+	const unsigned char *const y_neg_buffer,
+	int y_neg_buffer_length,
+	const unsigned char *const z_pos_buffer,
+	int z_pos_buffer_length,
+	const unsigned char *const z_neg_buffer,
+	int z_neg_buffer_length,
+	int hdr_texture_format,
+	unsigned int reuse_texture_ID,
+	unsigned int flags )
+{
+	const unsigned char *buffers[6];
+	int buffer_lengths[6];
+	SOIL_HDR_image images[6] = {
+		{ NULL, 0, 0 }, { NULL, 0, 0 }, { NULL, 0, 0 },
+		{ NULL, 0, 0 }, { NULL, 0, 0 }, { NULL, 0, 0 }
+	};
+	unsigned int tex_id;
+	int image_index;
+
+	buffers[0] = x_pos_buffer;
+	buffers[1] = x_neg_buffer;
+	buffers[2] = y_pos_buffer;
+	buffers[3] = y_neg_buffer;
+	buffers[4] = z_pos_buffer;
+	buffers[5] = z_neg_buffer;
+	buffer_lengths[0] = x_pos_buffer_length;
+	buffer_lengths[1] = x_neg_buffer_length;
+	buffer_lengths[2] = y_pos_buffer_length;
+	buffer_lengths[3] = y_neg_buffer_length;
+	buffer_lengths[4] = z_pos_buffer_length;
+	buffer_lengths[5] = z_neg_buffer_length;
+	for( image_index = 0; image_index < 6; ++image_index )
+	{
+		if( !SOIL_HDR_load_memory(
+			buffers[image_index], buffer_lengths[image_index],
+			&images[image_index] ) )
+		{
+			SOIL_HDR_free_images( images, 6 );
+			return 0;
+		}
+	}
+	tex_id = SOIL_internal_create_OGL_HDR_texture(
+		images, 6, hdr_texture_format, reuse_texture_ID, flags, 1 );
+	SOIL_HDR_free_images( images, 6 );
 	return tex_id;
 }
 

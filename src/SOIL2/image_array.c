@@ -6,6 +6,34 @@
 
 extern const char *result_string_pointer;
 
+static void image_array_invert_rows(
+	void *data,
+	int height,
+	size_t row_bytes
+)
+{
+	int y;
+	unsigned char *image = (unsigned char *)data;
+	if( image == NULL )
+	{
+		return;
+	}
+
+	for( y = 0; y < height / 2; ++y )
+	{
+		size_t x;
+		unsigned char *row_top = image + (size_t)y * row_bytes;
+		unsigned char *row_bottom =
+			image + (size_t)(height - 1 - y) * row_bytes;
+		for( x = 0; x < row_bytes; ++x )
+		{
+			const unsigned char value = row_top[x];
+			row_top[x] = row_bottom[x];
+			row_bottom[x] = value;
+		}
+	}
+}
+
 void SOIL_image_array_free(SOIL_ImageArray *imgArray){
     if(imgArray == NULL){
         return;
@@ -27,29 +55,54 @@ void SOIL_image_array_free(SOIL_ImageArray *imgArray){
     imgArray->channels = 0;
 }
 
+void image_array_free_f32( float **data, int layers )
+{
+	int layer;
+	if( data == NULL )
+	{
+		return;
+	}
+	for( layer = 0; layer < layers; ++layer )
+	{
+		free( data[layer] );
+		data[layer] = NULL;
+	}
+}
+
 void image_array_invert_y(SOIL_ImageArray* imgArray){
+	int layer;
 
 	if (!imgArray || !imgArray->data)
 		return;
 
-	const size_t rowBytes = (size_t)(imgArray->width) * (size_t)(imgArray->channels);
+	for( layer = 0; layer < imgArray->layers; ++layer )
+	{
+		image_array_invert_rows(
+			imgArray->data[layer],
+			imgArray->height,
+			(size_t)imgArray->width * (size_t)imgArray->channels );
+	}
+}
 
-	for (int layer = 0; layer < imgArray->layers; ++layer) {
-
-		unsigned char *image = imgArray->data[layer];
-
-		if (!image) continue;
-
-		for (int y = 0; y < imgArray->height / 2; ++y) {
-			unsigned char *rowTop = image + (size_t)y * rowBytes;
-			unsigned char *rowBottom = image + (size_t)(imgArray->height - 1 - y) * rowBytes;
-
-			for (size_t x = 0; x < rowBytes; ++x) {
-				unsigned char temp = rowTop[x];
-				rowTop[x] = rowBottom[x];
-				rowBottom[x] = temp;
-			}
-		}
+void image_array_invert_y_f32(
+	float **data,
+	int layers,
+	int width,
+	int height,
+	int channels
+)
+{
+	int layer;
+	if( data == NULL || layers < 1 || width < 1 || height < 1 || channels < 1 )
+	{
+		return;
+	}
+	for( layer = 0; layer < layers; ++layer )
+	{
+		image_array_invert_rows(
+			data[layer],
+			height,
+			(size_t)width * (size_t)channels * sizeof(float) );
 	}
 }
 
@@ -146,21 +199,13 @@ void image_array_to_YCoCg(SOIL_ImageArray* imgArray){
 	}
 }
 
-static int next_power_of_two(int v)
-{
-    int r = 1;
-    while (r < v)
-        r <<= 1;
-    return r;
-}
-
 int image_array_resize_POT(SOIL_ImageArray *imgArray)
 {
     if (!imgArray || !imgArray->data)
         return 1;
 
-    int new_w = next_power_of_two(imgArray->width);
-    int new_h = next_power_of_two(imgArray->height);
+    int new_w = image_next_power_of_two(imgArray->width);
+    int new_h = image_next_power_of_two(imgArray->height);
 
     if (new_w == imgArray->width && new_h == imgArray->height)
         return 1;
@@ -196,6 +241,136 @@ int image_array_resize_POT(SOIL_ImageArray *imgArray)
     imgArray->height = new_h;
 
     return 1;
+}
+
+int image_array_resize_f32(
+	float **data,
+	int layers,
+	int channels,
+	int old_width,
+	int old_height,
+	int new_width,
+	int new_height
+)
+{
+	int layer;
+
+	if( data == NULL || layers < 1 || channels < 1 ||
+		old_width < 1 || old_height < 1 ||
+		new_width < 1 || new_height < 1 )
+	{
+		return 0;
+	}
+	if( old_width == new_width && old_height == new_height )
+	{
+		return 1;
+	}
+
+	for( layer = 0; layer < layers; ++layer )
+	{
+		float *resized;
+		if( data[layer] == NULL )
+		{
+			continue;
+		}
+
+		resized = (float *)malloc(
+			(size_t)new_width * (size_t)new_height *
+			(size_t)channels * sizeof(float) );
+		if( resized == NULL )
+		{
+			return 0;
+		}
+		if( !resize_image_f32(
+			data[layer], old_width, old_height, channels,
+			resized, new_width, new_height ) )
+		{
+			free( resized );
+			return 0;
+		}
+
+		free( data[layer] );
+		data[layer] = resized;
+	}
+
+	return 1;
+}
+
+int image_array_resize_POT_f32(
+	float **data,
+	int layers,
+	int channels,
+	int *width,
+	int *height
+)
+{
+	if( width == NULL || height == NULL )
+	{
+		return 0;
+	}
+
+	const int new_width = image_next_power_of_two( *width );
+	const int new_height = image_next_power_of_two( *height );
+
+	if( !image_array_resize_f32(
+		data, layers, channels, *width, *height, new_width, new_height ) )
+	{
+		return 0;
+	}
+
+	*width = new_width;
+	*height = new_height;
+	return 1;
+}
+
+float *image_array_make_next_mipmap_f32(
+	const float *data,
+	int channels,
+	int width,
+	int height,
+	int *new_width,
+	int *new_height
+)
+{
+	float *mipmap;
+	int x, y, channel;
+
+	if( data == NULL || channels < 1 || width < 1 || height < 1 ||
+		new_width == NULL || new_height == NULL )
+	{
+		return NULL;
+	}
+
+	*new_width = width > 1 ? (width + 1) / 2 : 1;
+	*new_height = height > 1 ? (height + 1) / 2 : 1;
+	mipmap = (float *)malloc(
+		(size_t)(*new_width) * (size_t)(*new_height) *
+		(size_t)channels * sizeof(float) );
+	if( mipmap == NULL )
+	{
+		return NULL;
+	}
+
+	for( y = 0; y < *new_height; ++y )
+	{
+		for( x = 0; x < *new_width; ++x )
+		{
+			const int x0 = x * 2;
+			const int y0 = y * 2;
+			const int x1 = x0 + 1 < width ? x0 + 1 : x0;
+			const int y1 = y0 + 1 < height ? y0 + 1 : y0;
+			for( channel = 0; channel < channels; ++channel )
+			{
+				mipmap[(y * (*new_width) + x) * channels + channel] =
+					(data[(y0 * width + x0) * channels + channel] +
+					 data[(y0 * width + x1) * channels + channel] +
+					 data[(y1 * width + x0) * channels + channel] +
+					 data[(y1 * width + x1) * channels + channel]) * 0.25f;
+			}
+		}
+	}
+
+	return mipmap;
 }
 
 int image_array_reduce_to_max(SOIL_ImageArray *imgArray, int max_size)

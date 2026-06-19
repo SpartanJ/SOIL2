@@ -46,7 +46,7 @@
 #ifndef HEADER_SIMPLE_OPENGL_IMAGE_LIBRARY
 #define HEADER_SIMPLE_OPENGL_IMAGE_LIBRARY
 
-#include "image_array_helper.h" 
+#include "image_array_helper.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -179,6 +179,19 @@ enum
 };
 
 /**
+	GPU storage formats for native floating-point HDR textures.
+
+	The source Radiance HDR image is always decoded to linear 32-bit float RGB.
+	SOIL_HDR_TEXTURE_RGB16F reduces GPU memory use while
+	SOIL_HDR_TEXTURE_RGB32F preserves the decoded precision.
+**/
+enum
+{
+	SOIL_HDR_TEXTURE_RGB16F = 0,
+	SOIL_HDR_TEXTURE_RGB32F = 1
+};
+
+/**
 	Loads an image from disk into an OpenGL texture.
 	\param filename the name of the file to upload as a texture
 	\param force_channels 0-image format, 1-luminous, 2-luminous/alpha, 3-RGB, 4-RGBA
@@ -271,6 +284,86 @@ unsigned int
 		const char *filename,
 		int fake_HDR_format,
 		int rescale_to_max,
+		unsigned int reuse_texture_ID,
+		unsigned int flags
+	);
+
+/**
+	Loads a Radiance HDR image from disk as a native floating-point OpenGL
+	texture. Unlike SOIL_load_OGL_HDR_texture(), this function does not encode
+	the image into an 8-bit fake-HDR representation.
+
+	\param filename the name of the Radiance HDR file to upload
+	\param hdr_texture_format SOIL_HDR_TEXTURE_RGB16F or
+	       SOIL_HDR_TEXTURE_RGB32F
+	\param reuse_texture_ID 0-generate a new texture ID, otherwise reuse it
+	\param flags may contain SOIL_FLAG_POWER_OF_TWO | SOIL_FLAG_MIPMAPS |
+	       SOIL_FLAG_GL_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS |
+	       SOIL_FLAG_INVERT_Y
+	\return 0-failed, otherwise returns the OpenGL texture handle
+**/
+unsigned int
+	SOIL_load_OGL_HDR_texture_f32
+	(
+		const char *filename,
+		int hdr_texture_format,
+		unsigned int reuse_texture_ID,
+		unsigned int flags
+	);
+
+/**
+	Loads a Radiance HDR image from RAM as a native floating-point OpenGL
+	texture. The input buffer contains the encoded .hdr file.
+**/
+unsigned int
+	SOIL_load_OGL_HDR_texture_f32_from_memory
+	(
+		const unsigned char *const buffer,
+		int buffer_length,
+		int hdr_texture_format,
+		unsigned int reuse_texture_ID,
+		unsigned int flags
+	);
+
+/**
+	Loads six Radiance HDR files into a native floating-point OpenGL cubemap.
+	All faces must be square and have identical dimensions.
+**/
+unsigned int
+	SOIL_load_OGL_HDR_cubemap_f32
+	(
+		const char *x_pos_file,
+		const char *x_neg_file,
+		const char *y_pos_file,
+		const char *y_neg_file,
+		const char *z_pos_file,
+		const char *z_neg_file,
+		int hdr_texture_format,
+		unsigned int reuse_texture_ID,
+		unsigned int flags
+	);
+
+/**
+	Loads six encoded Radiance HDR images from RAM into a native
+	floating-point OpenGL cubemap. All faces must be square and have identical
+	dimensions.
+**/
+unsigned int
+	SOIL_load_OGL_HDR_cubemap_f32_from_memory
+	(
+		const unsigned char *const x_pos_buffer,
+		int x_pos_buffer_length,
+		const unsigned char *const x_neg_buffer,
+		int x_neg_buffer_length,
+		const unsigned char *const y_pos_buffer,
+		int y_pos_buffer_length,
+		const unsigned char *const y_neg_buffer,
+		int y_neg_buffer_length,
+		const unsigned char *const z_pos_buffer,
+		int z_pos_buffer_length,
+		const unsigned char *const z_neg_buffer,
+		int z_neg_buffer_length,
+		int hdr_texture_format,
 		unsigned int reuse_texture_ID,
 		unsigned int flags
 	);
@@ -508,9 +601,9 @@ void
 
 /**
     Selects the appropriate OpenGL texture formats based on the number of channels and flags.
-    This function determines both the internal format (how OpenGL stores the texture) and 
+    This function determines both the internal format (how OpenGL stores the texture) and
     the external format (how the data is provided) for texture uploads.
-    
+
     \param channels Number of color channels: 1 (L), 2 (LA), 3 (RGB), or 4 (RGBA)
     \param flags Bitwise combination of SOIL_FLAG_* options (e.g., SOIL_FLAG_COMPRESS_TO_DXT, SOIL_FLAG_SRGB_COLOR_SPACE)
     \param out_internal Pointer to store the selected internal GL format (GL_RGB, GL_RGBA, SOIL_RGB_S3TC_DXT1, etc.)
@@ -527,7 +620,7 @@ void SOIL_choose_gl_formats(
     Uploads image layers to a 2D texture array in OpenGL.
     This function transfers the image data from each layer of a SOIL_ImageArray
     to the GPU, storing them as individual layers in a GL_TEXTURE_2D_ARRAY.
-    
+
     \param imgArray Pointer to the SOIL_ImageArray containing the layer data to upload
     \param external_fmt The OpenGL external format specifying how the data is organized (GL_RGB, GL_RGBA, GL_LUMINANCE, etc.)
 **/
@@ -540,7 +633,7 @@ void SOIL_upload_image_array_layers(
     Creates GPU storage for a 2D texture array with specified dimensions and layer count.
     Allocates the necessary GPU memory for a texture array without loading data initially.
     Data can be populated later using SOIL_upload_image_array_layers().
-    
+
     \param reuse_id 0 to generate a new texture ID, or an existing texture ID to reuse
     \param internal_fmt The OpenGL internal format specifying how the GPU stores the texture (GL_RGB, GL_RGBA, GL_SRGB, etc.)
     \param external_fmt The OpenGL external format specifying the input data layout (GL_RGB, GL_RGBA, GL_LUMINANCE, etc.)
@@ -561,7 +654,7 @@ unsigned int SOIL_create_texture_array_storage(
 /**
     Configures texture parameters for a 2D texture array based on the provided flags.
     Sets up filtering, wrapping, and mipmap behavior for the currently bound texture array.
-    
+
     \param flags Bitwise combination of SOIL_FLAG_* options (e.g., SOIL_FLAG_MIPMAPS, SOIL_FLAG_TEXTURE_REPEATS)
 **/
 void SOIL_setup_texture_params(int flags);
@@ -570,7 +663,7 @@ void SOIL_setup_texture_params(int flags);
     Loads an image atlas from disk and splits it into a 2D texture array.
     Divides a single image file into a grid of smaller images and uploads them as individual
     layers in a GL_TEXTURE_2D_ARRAY texture, ideal for sprite sheets and tile atlases.
-    
+
     \param filename the name of the atlas file to load
     \param cols number of columns in the atlas grid
     \param rows number of rows in the atlas grid
@@ -592,7 +685,7 @@ unsigned int SOIL_load_OGL_texture_array_from_atlas_grid(
     Prepares an image array for GPU upload by applying transformations.
     Processes the image array according to flags (invert Y, NTSC safe, alpha multiplication, etc.)
     and ensures dimensions meet GPU constraints (POT, max texture size).
-    
+
     \param imgArray pointer to the SOIL_ImageArray to process
     \param flags bitwise combination of SOIL_FLAG_* options specifying transformations to apply
     \return 1 if successful, 0 if preparation failed
@@ -606,7 +699,7 @@ int SOIL_prepare_image_array(
     Uploads a prepared image array to GPU memory as a 2D texture array.
     Transfers all layers from a SOIL_ImageArray to OpenGL, creating or reusing a texture ID,
     and applies texture parameter settings.
-    
+
     \param imgArray pointer to the SOIL_ImageArray containing the layers to upload
     \param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the texture ID (overwriting the old texture)
     \param flags bitwise combination of SOIL_FLAG_* options for texture configuration
