@@ -98,6 +98,54 @@
 #ifndef GL_RG
 #define GL_RG 0x8227
 #endif
+#ifndef GL_R8
+#define GL_R8 0x8229
+#endif
+#ifndef GL_R8_SNORM
+#define GL_R8_SNORM 0x8F94
+#endif
+#ifndef GL_R16
+#define GL_R16 0x822A
+#endif
+#ifndef GL_R16F
+#define GL_R16F 0x822D
+#endif
+#ifndef GL_R32F
+#define GL_R32F 0x822E
+#endif
+#ifndef GL_RG8
+#define GL_RG8 0x822B
+#endif
+#ifndef GL_RG8_SNORM
+#define GL_RG8_SNORM 0x8F95
+#endif
+#ifndef GL_RG16
+#define GL_RG16 0x822C
+#endif
+#ifndef GL_RG16F
+#define GL_RG16F 0x822F
+#endif
+#ifndef GL_RG32F
+#define GL_RG32F 0x8230
+#endif
+#ifndef GL_RGBA8
+#define GL_RGBA8 0x8058
+#endif
+#ifndef GL_SRGB8_ALPHA8
+#define GL_SRGB8_ALPHA8 0x8C43
+#endif
+#ifndef GL_RGB10_A2
+#define GL_RGB10_A2 0x8059
+#endif
+#ifndef GL_R11F_G11F_B10F
+#define GL_R11F_G11F_B10F 0x8C3A
+#endif
+#ifndef GL_UNSIGNED_INT_2_10_10_10_REV
+#define GL_UNSIGNED_INT_2_10_10_10_REV 0x8368
+#endif
+#ifndef GL_UNSIGNED_INT_10F_11F_11F_REV
+#define GL_UNSIGNED_INT_10F_11F_11F_REV 0x8C3B
+#endif
 
 #ifndef GL_UNSIGNED_SHORT_4_4_4_4
 #define GL_UNSIGNED_SHORT_4_4_4_4 0x8033
@@ -3075,6 +3123,148 @@ static unsigned int calc_total_block_size(const unsigned int w, const unsigned i
 #pragma optimize( "", on )
 #endif
 
+static int SOIL_DDS_map_uncompressed_dxgi(
+	unsigned int dxgi_format,
+	unsigned int *internal_format,
+	unsigned int *external_format,
+	unsigned int *format_type,
+	unsigned int *bytes_per_pixel,
+	int *floating_point_format,
+	int *srgb_format )
+{
+	*floating_point_format = 0;
+	*srgb_format = 0;
+
+	switch( dxgi_format )
+	{
+	case DXGI_FORMAT_R8G8B8A8_UNORM:
+		*internal_format = GL_RGBA8;
+		*external_format = GL_RGBA;
+		*format_type = GL_UNSIGNED_BYTE;
+		*bytes_per_pixel = 4;
+		return 1;
+	case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		*internal_format = GL_SRGB8_ALPHA8;
+		*external_format = GL_RGBA;
+		*format_type = GL_UNSIGNED_BYTE;
+		*bytes_per_pixel = 4;
+		*srgb_format = 1;
+		return 1;
+	case DXGI_FORMAT_B8G8R8A8_UNORM:
+		*internal_format = GL_RGBA8;
+		*external_format = GL_BGRA;
+		*format_type = GL_UNSIGNED_BYTE;
+		*bytes_per_pixel = 4;
+		return 1;
+	case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		*internal_format = GL_SRGB8_ALPHA8;
+		*external_format = GL_BGRA;
+		*format_type = GL_UNSIGNED_BYTE;
+		*bytes_per_pixel = 4;
+		*srgb_format = 1;
+		return 1;
+	case DXGI_FORMAT_R8_UNORM:
+		*internal_format = GL_R8;
+		*external_format = GL_RED;
+		*format_type = GL_UNSIGNED_BYTE;
+		*bytes_per_pixel = 1;
+		return 1;
+	case DXGI_FORMAT_R8_SNORM:
+		*internal_format = GL_R8_SNORM;
+		*external_format = GL_RED;
+		*format_type = GL_BYTE;
+		*bytes_per_pixel = 1;
+		return 1;
+	case DXGI_FORMAT_R8G8_UNORM:
+		*internal_format = GL_RG8;
+		*external_format = GL_RG;
+		*format_type = GL_UNSIGNED_BYTE;
+		*bytes_per_pixel = 2;
+		return 1;
+	case DXGI_FORMAT_R8G8_SNORM:
+		*internal_format = GL_RG8_SNORM;
+		*external_format = GL_RG;
+		*format_type = GL_BYTE;
+		*bytes_per_pixel = 2;
+		return 1;
+	case DXGI_FORMAT_R16_UNORM:
+		*internal_format = GL_R16;
+		*external_format = GL_RED;
+		*format_type = GL_UNSIGNED_SHORT;
+		*bytes_per_pixel = 2;
+		return 1;
+	case DXGI_FORMAT_R16G16_UNORM:
+		*internal_format = GL_RG16;
+		*external_format = GL_RG;
+		*format_type = GL_UNSIGNED_SHORT;
+		*bytes_per_pixel = 4;
+		return 1;
+	case DXGI_FORMAT_R16_FLOAT:
+		*internal_format = GL_R16F;
+		*external_format = GL_RED;
+		*format_type = SOIL_GL_HALF_FLOAT;
+		*bytes_per_pixel = 2;
+		*floating_point_format = 1;
+		return 1;
+	case DXGI_FORMAT_R16G16_FLOAT:
+		*internal_format = GL_RG16F;
+		*external_format = GL_RG;
+		*format_type = SOIL_GL_HALF_FLOAT;
+		*bytes_per_pixel = 4;
+		*floating_point_format = 1;
+		return 1;
+	case DXGI_FORMAT_R16G16B16A16_UNORM:
+		*internal_format = SOIL_GL_RGBA16;
+		*external_format = GL_RGBA;
+		*format_type = GL_UNSIGNED_SHORT;
+		*bytes_per_pixel = 8;
+		return 1;
+	case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		*internal_format = SOIL_GL_RGBA16F;
+		*external_format = GL_RGBA;
+		*format_type = SOIL_GL_HALF_FLOAT;
+		*bytes_per_pixel = 8;
+		*floating_point_format = 1;
+		return 1;
+	case DXGI_FORMAT_R32_FLOAT:
+		*internal_format = GL_R32F;
+		*external_format = GL_RED;
+		*format_type = GL_FLOAT;
+		*bytes_per_pixel = 4;
+		*floating_point_format = 1;
+		return 1;
+	case DXGI_FORMAT_R32G32_FLOAT:
+		*internal_format = GL_RG32F;
+		*external_format = GL_RG;
+		*format_type = GL_FLOAT;
+		*bytes_per_pixel = 8;
+		*floating_point_format = 1;
+		return 1;
+	case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		*internal_format = SOIL_GL_RGBA32F;
+		*external_format = GL_RGBA;
+		*format_type = GL_FLOAT;
+		*bytes_per_pixel = 16;
+		*floating_point_format = 1;
+		return 1;
+	case DXGI_FORMAT_R10G10B10A2_UNORM:
+		*internal_format = GL_RGB10_A2;
+		*external_format = GL_RGBA;
+		*format_type = GL_UNSIGNED_INT_2_10_10_10_REV;
+		*bytes_per_pixel = 4;
+		return 1;
+	case DXGI_FORMAT_R11G11B10_FLOAT:
+		*internal_format = GL_R11F_G11F_B10F;
+		*external_format = GL_RGB;
+		*format_type = GL_UNSIGNED_INT_10F_11F_11F_REV;
+		*bytes_per_pixel = 4;
+		*floating_point_format = 1;
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 unsigned int SOIL_direct_load_DDS_from_memory(
 		const unsigned char *const buffer,
 		const int buffer_length,
@@ -3192,7 +3382,8 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	unsigned int internal_format = 0;
 	unsigned int external_format = 0;
 	unsigned int block_size = 16;
-	int high_precision_format = 0;
+	int floating_point_format = 0;
+	int srgb_uncompressed_format = 0;
 	int srgb_compressed_format = 0;
 	enum
 	{
@@ -3202,35 +3393,36 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		DDS_COMPRESSION_BPTC
 	} compression_family = DDS_COMPRESSION_NONE;
 
-	if( header.sPixelFormat.dwFourCC == A16B16G16R16 ||
-	    ( header.sPixelFormat.dwFourCC == DX10 &&
-	      dx10_header.dxgiFormat == DXGI_FORMAT_R16G16B16A16_UNORM ) )
+	if( header.sPixelFormat.dwFourCC == A16B16G16R16 )
 	{
-		high_precision_format = 1;
 		internal_format = SOIL_GL_RGBA16;
 		external_format = GL_RGBA;
 		format_type = GL_UNSIGNED_SHORT;
 		block_size = 8;
 	}
-	else if( header.sPixelFormat.dwFourCC == A16B16G16R16F ||
-	         ( header.sPixelFormat.dwFourCC == DX10 &&
-	           dx10_header.dxgiFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ) )
+	else if( header.sPixelFormat.dwFourCC == A16B16G16R16F )
 	{
-		high_precision_format = 1;
+		floating_point_format = 1;
 		internal_format = SOIL_GL_RGBA16F;
 		external_format = GL_RGBA;
 		format_type = SOIL_GL_HALF_FLOAT;
 		block_size = 8;
 	}
-	else if( header.sPixelFormat.dwFourCC == A32B32G32R32F ||
-	         ( header.sPixelFormat.dwFourCC == DX10 &&
-	           dx10_header.dxgiFormat == DXGI_FORMAT_R32G32B32A32_FLOAT ) )
+	else if( header.sPixelFormat.dwFourCC == A32B32G32R32F )
 	{
-		high_precision_format = 1;
+		floating_point_format = 1;
 		internal_format = SOIL_GL_RGBA32F;
 		external_format = GL_RGBA;
 		format_type = GL_FLOAT;
 		block_size = 16;
+	}
+	else if( header.sPixelFormat.dwFourCC == DX10 &&
+	         SOIL_DDS_map_uncompressed_dxgi(
+		         dx10_header.dxgiFormat, &internal_format, &external_format,
+		         &format_type, &block_size, &floating_point_format,
+		         &srgb_uncompressed_format ) )
+	{
+		/* The mapping helper filled all upload parameters. */
 	}
 	else if( ( header.sPixelFormat.dwFlags & DDPF_FOURCC ) == 0 )
 	{
@@ -3421,11 +3613,16 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		}
 	}
 
-	if( high_precision_format &&
-	    ( internal_format == SOIL_GL_RGBA16F || internal_format == SOIL_GL_RGBA32F ) &&
+	if( floating_point_format &&
 	    query_texture_float_capability() != SOIL_CAPABILITY_PRESENT )
 	{
 		result_string_pointer = "Floating-point textures not supported by the OpenGL driver";
+		return 0;
+	}
+	if( srgb_uncompressed_format &&
+	    query_sRGB_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		result_string_pointer = "sRGB textures not supported by the OpenGL driver";
 		return 0;
 	}
 	if( srgb_compressed_format &&
@@ -3508,10 +3705,24 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 
 	unsigned int mipmaps;
 	unsigned int DDS_full_size;
+	unsigned int DDS_source_full_size;
 	if( header.sCaps.dwCaps1 & DDSCAPS_MIPMAP && header.dwMipMapCount > 1 )
 	{
 		mipmaps = header.dwMipMapCount - 1;
 		DDS_full_size = DDS_main_size;
+		if( !block_compressed )
+		{
+			const unsigned int tight_row_pitch = header.dwWidth * block_size;
+			const unsigned int source_row_pitch =
+				( ( header.dwFlags & DDSD_PITCH ) &&
+				  header.dwPitchOrLinearSize >= tight_row_pitch ) ?
+					header.dwPitchOrLinearSize : tight_row_pitch;
+			DDS_source_full_size = source_row_pitch * header.dwHeight;
+		}
+		else
+		{
+			DDS_source_full_size = DDS_main_size;
+		}
 
 		for( unsigned int i = 1; i <= mipmaps; ++i )
 		{
@@ -3521,13 +3732,18 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 			if( h < 1 ) { h = 1; }
 			if( !block_compressed )
 			{
-				/*	uncompressed DDS, simple MIPmap size calculation	*/
-				DDS_full_size += w * h * block_size;
+				/* DDS only records the top-level pitch. Lower DX10 mip levels
+				   use their tightly packed format pitch. */
+				const unsigned int mip_size = w * h * block_size;
+				DDS_full_size += mip_size;
+				DDS_source_full_size += mip_size;
 			}
 			else
 			{
 				/*	compressed DDS, MIPmap size calculation is block based	*/
-				DDS_full_size += calc_total_block_size( w, h, block_size );
+				const unsigned int mip_size = calc_total_block_size( w, h, block_size );
+				DDS_full_size += mip_size;
+				DDS_source_full_size += mip_size;
 			}
 		}
 	}
@@ -3535,6 +3751,19 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	{
 		mipmaps = 0;
 		DDS_full_size = DDS_main_size;
+		if( !block_compressed )
+		{
+			const unsigned int tight_row_pitch = header.dwWidth * block_size;
+			const unsigned int source_row_pitch =
+				( ( header.dwFlags & DDSD_PITCH ) &&
+				  header.dwPitchOrLinearSize >= tight_row_pitch ) ?
+					header.dwPitchOrLinearSize : tight_row_pitch;
+			DDS_source_full_size = source_row_pitch * header.dwHeight;
+		}
+		else
+		{
+			DDS_source_full_size = DDS_main_size;
+		}
 	}
 
 	/*	got the image data RAM, create or use an existing OpenGL texture handle	*/
@@ -3544,7 +3773,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	glBindTexture( opengl_texture_type, tex_ID );
 
 	const unsigned int faces = ogl_target_end - ogl_target_start + 1;
-	if ( faces * DDS_full_size > (unsigned int)buffer_length - buffer_index )
+	if ( faces * DDS_source_full_size > (unsigned int)buffer_length - buffer_index )
 	{
 		glDeleteTextures( 1, &tex_ID );
 		result_string_pointer = "DDS file was too small for expected image data";
@@ -3553,81 +3782,114 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 
 	if( !block_compressed )
 	{
-		unsigned char * DDS_data = (unsigned char*) malloc( DDS_full_size );
+		GLint unpack_alignment;
+		unsigned char * DDS_data = (unsigned char*) malloc( DDS_main_size );
 		if( NULL == DDS_data )
 		{
 			result_string_pointer = "malloc failed";
 			return 0;
 		}
+		glGetIntegerv( GL_UNPACK_ALIGNMENT, &unpack_alignment );
+		if( unpack_alignment != 1 )
+		{
+			glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
+		}
 		for(unsigned int cf_target = ogl_target_start; cf_target <= ogl_target_end; ++cf_target )
 		{
-			memcpy( DDS_data, &buffer[buffer_index], DDS_full_size );
-			buffer_index += DDS_full_size;
-			if( ( header.sPixelFormat.dwRBitMask == 0xff0000 ) &&
-			    ( ( block_size == 3 && internal_format == GL_RGB ) ||
-			      ( block_size == 4 && internal_format == GL_RGBA ) ) )
-			{
-				for( int i = 0; i < (int)DDS_full_size; i += block_size )
-				{
-					unsigned char temp = DDS_data[i];
-					DDS_data[i] = DDS_data[i + 2];
-					DDS_data[i + 2] = temp;
-				}
-			}
-			else if( block_size == 2 &&
-			         ( header.sPixelFormat.dwRBitMask == 0xf800 || header.sPixelFormat.dwRBitMask == 0x7c00 ) )
-			{
-				// convert to R5G5B5A1
-				for( int i = 0; i < (int)DDS_full_size; i += block_size )
-				{
-					unsigned short pixel = DDS_data[i] << 0 | DDS_data[i + 1] << 8;
-					char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 10 );
-					char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 5 );
-					char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
-					char a = 1;
-					if( header.sPixelFormat.dwAlphaBitMask != 0 )
-					{ a = ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 15; }
-					unsigned short pixel_new = ( r << 11 ) | ( g << 6 ) | ( b << 1 ) | a;
-					DDS_data[i] = ( pixel_new >> 0 ) & 0xff;
-					DDS_data[i + 1] = ( pixel_new >> 8 ) & 0xff;
-				}
-			}
-			else if( block_size == 2 && ( header.sPixelFormat.dwRBitMask == 0xf00 ) &&
-			         ( header.sPixelFormat.dwGBitMask == 0xf0 ) && ( header.sPixelFormat.dwBBitMask == 0xf ) &&
-			         ( header.sPixelFormat.dwAlphaBitMask == 0xf000 ) )
-			{
-				for( int i = 0; i < (int)DDS_full_size; i += block_size )
-				{
-					unsigned short pixel = DDS_data[i] << 0 | DDS_data[i + 1] << 8;
-					char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 8 );
-					char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 4 );
-					char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
-					char a = ( ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 12 );
-					unsigned short pixel_new = ( r << 12 ) | ( g << 8 ) | ( b << 4 ) | a;
-					DDS_data[i] = ( pixel_new >> 0 ) & 0xff;
-					DDS_data[i + 1] = ( pixel_new >> 8 ) & 0xff;
-				}
-			}
-			/*	upload the main chunk	*/
-			glTexImage2D( cf_target, 0, internal_format, header.dwWidth, header.dwHeight, 0, external_format, format_type, DDS_data );
-
-			unsigned int byte_offset = DDS_main_size;
-
-			/*	upload the mipmaps, if we have them	*/
-			for( unsigned int i = 1; i <= mipmaps; ++i )
+			unsigned int source_offset = 0;
+			for( unsigned int i = 0; i <= mipmaps; ++i )
 			{
 				unsigned int w = header.dwWidth >> i;
 				unsigned int h = header.dwHeight >> i;
+				unsigned int tight_row_pitch;
+				unsigned int source_row_pitch;
+				unsigned int mip_size;
 				if( w < 1 ) { w = 1; }
 				if( h < 1 ) { h = 1; }
-				/*	upload this mipmap	*/
-				const unsigned int mip_size = w * h * block_size;
-				glTexImage2D( cf_target, i, internal_format, w, h, 0, external_format, format_type,
-				              &DDS_data[byte_offset] );
+				tight_row_pitch = w * block_size;
+				source_row_pitch = tight_row_pitch;
+				if( i == 0 && ( header.dwFlags & DDSD_PITCH ) &&
+				    header.dwPitchOrLinearSize >= tight_row_pitch )
+				{
+					source_row_pitch = header.dwPitchOrLinearSize;
+				}
+				mip_size = tight_row_pitch * h;
+				for( unsigned int row = 0; row < h; ++row )
+				{
+					memcpy(
+						&DDS_data[row * tight_row_pitch],
+						&buffer[buffer_index + source_offset + row * source_row_pitch],
+						tight_row_pitch );
+				}
+				source_offset += source_row_pitch * h;
 
-				/*	and move to the next mipmap	*/
-				byte_offset += mip_size;
+				if( ( header.sPixelFormat.dwRBitMask == 0xff0000 ) &&
+				    ( ( block_size == 3 && internal_format == GL_RGB ) ||
+				      ( block_size == 4 && internal_format == GL_RGBA ) ) )
+				{
+					for( unsigned int pixel = 0; pixel < mip_size; pixel += block_size )
+					{
+						unsigned char temp = DDS_data[pixel];
+						DDS_data[pixel] = DDS_data[pixel + 2];
+						DDS_data[pixel + 2] = temp;
+					}
+				}
+				else if( block_size == 2 &&
+				         ( header.sPixelFormat.dwRBitMask == 0xf800 ||
+				           header.sPixelFormat.dwRBitMask == 0x7c00 ) )
+				{
+					/* convert to R5G5B5A1 */
+					for( unsigned int pixel_offset = 0;
+					     pixel_offset < mip_size; pixel_offset += block_size )
+					{
+						unsigned short pixel =
+							DDS_data[pixel_offset] << 0 |
+							DDS_data[pixel_offset + 1] << 8;
+						char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 10 );
+						char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 5 );
+						char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
+						char a = 1;
+						if( header.sPixelFormat.dwAlphaBitMask != 0 )
+						{ a = ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 15; }
+						{
+							unsigned short pixel_new =
+								( r << 11 ) | ( g << 6 ) | ( b << 1 ) | a;
+							DDS_data[pixel_offset] = ( pixel_new >> 0 ) & 0xff;
+							DDS_data[pixel_offset + 1] = ( pixel_new >> 8 ) & 0xff;
+						}
+					}
+				}
+				else if( block_size == 2 &&
+				         header.sPixelFormat.dwRBitMask == 0xf00 &&
+				         header.sPixelFormat.dwGBitMask == 0xf0 &&
+				         header.sPixelFormat.dwBBitMask == 0xf &&
+				         header.sPixelFormat.dwAlphaBitMask == 0xf000 )
+				{
+					for( unsigned int pixel_offset = 0;
+					     pixel_offset < mip_size; pixel_offset += block_size )
+					{
+						unsigned short pixel =
+							DDS_data[pixel_offset] << 0 |
+							DDS_data[pixel_offset + 1] << 8;
+						char r = ( ( pixel & header.sPixelFormat.dwRBitMask ) >> 8 );
+						char g = ( ( pixel & header.sPixelFormat.dwGBitMask ) >> 4 );
+						char b = ( ( pixel & header.sPixelFormat.dwBBitMask ) >> 0 );
+						char a = ( ( pixel & header.sPixelFormat.dwAlphaBitMask ) >> 12 );
+						unsigned short pixel_new =
+							( r << 12 ) | ( g << 8 ) | ( b << 4 ) | a;
+						DDS_data[pixel_offset] = ( pixel_new >> 0 ) & 0xff;
+						DDS_data[pixel_offset + 1] = ( pixel_new >> 8 ) & 0xff;
+					}
+				}
+
+				glTexImage2D( cf_target, i, internal_format, w, h, 0, external_format, format_type,
+				              DDS_data );
 			}
+			buffer_index += DDS_source_full_size;
+		}
+		if( unpack_alignment != 1 )
+		{
+			glPixelStorei( GL_UNPACK_ALIGNMENT, unpack_alignment );
 		}
 		free(DDS_data);
 	} else {

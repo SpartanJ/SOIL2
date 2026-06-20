@@ -28,7 +28,8 @@ MIT-0 (see LICENSE file)
     * PNG - non-interlaced (from stb_image documentation)
     * JPG - JPEG baseline (from stb_image documentation)
     * TGA - greyscale or RGB or RGBA or indexed, uncompressed or RLE
-    * DDS - BC1/BC2/BC3/BC3n/BC5u/BC6H_UF16 and high-precision RGBA,
+    * DDS - common uncompressed DXGI formats, BC1/BC2/BC3/BC3n/BC5u/BC6H_UF16,
+      and high-precision formats,
       including cubemaps (see `DDS support` below)
     * PSD - (from stb_image documentation)
     * [QOI](https://github.com/phoboslab/qoi)
@@ -84,12 +85,18 @@ Can take a single image file where width = 6*height (or vice versa), split it in
   linear HDR values, so displaying it directly in a normalized framebuffer requires exposure and
   tone mapping in the application's shader.
 * BC7 UNORM and sRGB - direct GPU upload (requires OpenGL BPTC texture compression support)
+* RGBA8 and BGRA8 UNORM and sRGB - direct GPU upload
+* R8 and RG8 UNORM and SNORM - direct GPU upload
+* R16 and RG16 UNORM - direct GPU upload
+* R16, RG16, R32, and RG32 FLOAT - direct GPU upload
+* R10G10B10A2 UNORM and R11G11B10 FLOAT - direct GPU upload
 * RGBA16 UNORM - direct GPU upload (DX10 and legacy D3DFMT_A16B16G16R16 DDS)
 * RGBA16 FLOAT - direct GPU upload (DX10 and legacy D3DFMT_A16B16G16R16F DDS)
 * RGBA32 FLOAT - direct GPU upload (DX10 and legacy D3DFMT_A32B32G32R32F DDS)
 
 Direct DDS upload supports 2D textures and cubemaps. DDS texture arrays and volume textures are not
-currently loaded directly.
+currently loaded directly. Uncompressed DX10 uploads respect the top-level DDS row pitch and repack
+padded rows before passing them to OpenGL.
 
 The `bin/test_*.dds` fixtures use procedural gradients and checkerboards created by SOIL2's
 `soil2_generate_dds_fixtures` test utility; they do not contain third-party image content. Pass the

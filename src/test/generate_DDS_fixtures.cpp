@@ -138,7 +138,8 @@ static std::vector<float> make_procedural_rgba( int face )
 }
 
 static DDS_header make_header(
-	unsigned int bytes_per_pixel, unsigned int compressed_block_size, int cubemap )
+	unsigned int bytes_per_pixel, unsigned int compressed_block_size, int cubemap,
+	unsigned int row_pitch = 0 )
 {
 	DDS_header header;
 	memset( &header, 0, sizeof( header ) );
@@ -149,7 +150,7 @@ static DDS_header make_header(
 	header.dwHeight = FIXTURE_HEIGHT;
 	header.dwWidth = FIXTURE_WIDTH;
 	header.dwPitchOrLinearSize =
-		bytes_per_pixel ? FIXTURE_WIDTH * bytes_per_pixel :
+		bytes_per_pixel ? ( row_pitch ? row_pitch : FIXTURE_WIDTH * bytes_per_pixel ) :
 		                  ( ( FIXTURE_WIDTH + 3 ) / 4 ) *
 		                  ( ( FIXTURE_HEIGHT + 3 ) / 4 ) * compressed_block_size;
 	header.sPixelFormat.dwSize = 32;
@@ -183,7 +184,7 @@ static DDS_HEADER_DXT10 make_dx10_header( DXGI_FORMAT format, int cubemap )
 static int write_dds( const std::string& path, DXGI_FORMAT format,
                       unsigned int bytes_per_pixel, unsigned int compressed_block_size,
                       const void* data, size_t data_size,
-                      int cubemap )
+                      int cubemap, unsigned int row_pitch = 0 )
 {
 	FILE* output = fopen( path.c_str(), "wb" );
 	if( NULL == output )
@@ -192,7 +193,8 @@ static int write_dds( const std::string& path, DXGI_FORMAT format,
 		return 0;
 	}
 
-	const DDS_header header = make_header( bytes_per_pixel, compressed_block_size, cubemap );
+	const DDS_header header =
+		make_header( bytes_per_pixel, compressed_block_size, cubemap, row_pitch );
 	const DDS_HEADER_DXT10 dx10_header = make_dx10_header( format, cubemap );
 	const int success =
 		fwrite( &header, sizeof( header ), 1, output ) == 1 &&
@@ -251,6 +253,133 @@ static int write_high_precision_fixtures( const std::string& output_dir )
 		write_dds( output_dir + "/test_rgba32_float.dds",
 		           DXGI_FORMAT_R32G32B32A32_FLOAT, 16, 0,
 		           source.data(), source.size() * sizeof( float ), 0 );
+}
+
+static uint32_t float_to_ufloat( float value, unsigned int mantissa_bits )
+{
+	const uint16_t half = float_to_half( std::max( value, 0.0f ) );
+	unsigned int exponent = ( half >> 10 ) & 0x1f;
+	unsigned int mantissa = half & 0x3ff;
+	const unsigned int shift = 10 - mantissa_bits;
+
+	if( exponent == 0x1f )
+		return ( exponent << mantissa_bits ) |
+		       ( mantissa ? ( 1u << ( mantissa_bits - 1 ) ) : 0 );
+
+	mantissa = ( mantissa + ( 1u << ( shift - 1 ) ) ) >> shift;
+	if( mantissa == ( 1u << mantissa_bits ) )
+	{
+		mantissa = 0;
+		if( exponent < 0x1f )
+			++exponent;
+	}
+	return ( exponent << mantissa_bits ) | mantissa;
+}
+
+static int write_uncompressed_dxgi_fixtures( const std::string& output_dir )
+{
+	const std::vector<float> source = make_procedural_rgba( 0 );
+	const size_t pixel_count = FIXTURE_WIDTH * FIXTURE_HEIGHT;
+	std::vector<uint8_t> rgba8( pixel_count * 4 );
+	std::vector<uint8_t> bgra8( pixel_count * 4 );
+	std::vector<uint8_t> r8_padded( ( FIXTURE_WIDTH + 4 ) * FIXTURE_HEIGHT, 0xcd );
+	std::vector<int8_t> r8_snorm( pixel_count );
+	std::vector<uint8_t> rg8( pixel_count * 2 );
+	std::vector<int8_t> rg8_snorm( pixel_count * 2 );
+	std::vector<uint16_t> r16( pixel_count );
+	std::vector<uint16_t> rg16( pixel_count * 2 );
+	std::vector<uint16_t> r16f( pixel_count );
+	std::vector<uint16_t> rg16f( pixel_count * 2 );
+	std::vector<float> r32f( pixel_count );
+	std::vector<float> rg32f( pixel_count * 2 );
+	std::vector<uint32_t> rgb10a2( pixel_count );
+	std::vector<uint32_t> r11g11b10( pixel_count );
+
+	for( size_t pixel = 0; pixel < pixel_count; ++pixel )
+	{
+		const float r = std::max( 0.0f, std::min( source[pixel * 4 + 0], 1.0f ) );
+		const float g = std::max( 0.0f, std::min( source[pixel * 4 + 1], 1.0f ) );
+		const float b = std::max( 0.0f, std::min( source[pixel * 4 + 2], 1.0f ) );
+		const float a = std::max( 0.0f, std::min( source[pixel * 4 + 3], 1.0f ) );
+		const uint8_t r_byte = (uint8_t)std::floor( r * 255.0f + 0.5f );
+		const uint8_t g_byte = (uint8_t)std::floor( g * 255.0f + 0.5f );
+		const uint8_t b_byte = (uint8_t)std::floor( b * 255.0f + 0.5f );
+		const uint8_t a_byte = (uint8_t)std::floor( a * 255.0f + 0.5f );
+		const size_t x = pixel % FIXTURE_WIDTH;
+		const size_t y = pixel / FIXTURE_WIDTH;
+
+		rgba8[pixel * 4 + 0] = r_byte;
+		rgba8[pixel * 4 + 1] = g_byte;
+		rgba8[pixel * 4 + 2] = b_byte;
+		rgba8[pixel * 4 + 3] = a_byte;
+		bgra8[pixel * 4 + 0] = b_byte;
+		bgra8[pixel * 4 + 1] = g_byte;
+		bgra8[pixel * 4 + 2] = r_byte;
+		bgra8[pixel * 4 + 3] = a_byte;
+		r8_padded[y * ( FIXTURE_WIDTH + 4 ) + x] = r_byte;
+		r8_snorm[pixel] = (int8_t)std::floor( ( r * 2.0f - 1.0f ) * 127.0f );
+		rg8[pixel * 2 + 0] = r_byte;
+		rg8[pixel * 2 + 1] = g_byte;
+		rg8_snorm[pixel * 2 + 0] =
+			(int8_t)std::floor( ( r * 2.0f - 1.0f ) * 127.0f );
+		rg8_snorm[pixel * 2 + 1] =
+			(int8_t)std::floor( ( g * 2.0f - 1.0f ) * 127.0f );
+		r16[pixel] = (uint16_t)std::floor( r * 65535.0f + 0.5f );
+		rg16[pixel * 2 + 0] = (uint16_t)std::floor( r * 65535.0f + 0.5f );
+		rg16[pixel * 2 + 1] = (uint16_t)std::floor( g * 65535.0f + 0.5f );
+		r16f[pixel] = float_to_half( r );
+		rg16f[pixel * 2 + 0] = float_to_half( r );
+		rg16f[pixel * 2 + 1] = float_to_half( g );
+		r32f[pixel] = r;
+		rg32f[pixel * 2 + 0] = r;
+		rg32f[pixel * 2 + 1] = g;
+		rgb10a2[pixel] =
+			(uint32_t)std::floor( r * 1023.0f + 0.5f ) |
+			( (uint32_t)std::floor( g * 1023.0f + 0.5f ) << 10 ) |
+			( (uint32_t)std::floor( b * 1023.0f + 0.5f ) << 20 ) |
+			( (uint32_t)std::floor( a * 3.0f + 0.5f ) << 30 );
+		r11g11b10[pixel] =
+			float_to_ufloat( r, 6 ) |
+			( float_to_ufloat( g, 6 ) << 11 ) |
+			( float_to_ufloat( b, 5 ) << 22 );
+	}
+
+	return
+		write_dds( output_dir + "/test_dx10_rgba8_unorm.dds",
+			DXGI_FORMAT_R8G8B8A8_UNORM, 4, 0, rgba8.data(), rgba8.size(), 0 ) &&
+		write_dds( output_dir + "/test_dx10_rgba8_srgb.dds",
+			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 4, 0, rgba8.data(), rgba8.size(), 0 ) &&
+		write_dds( output_dir + "/test_dx10_bgra8_unorm.dds",
+			DXGI_FORMAT_B8G8R8A8_UNORM, 4, 0, bgra8.data(), bgra8.size(), 0 ) &&
+		write_dds( output_dir + "/test_dx10_bgra8_srgb.dds",
+			DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, 4, 0, bgra8.data(), bgra8.size(), 0 ) &&
+		write_dds( output_dir + "/test_dx10_r8_unorm_padded.dds",
+			DXGI_FORMAT_R8_UNORM, 1, 0, r8_padded.data(), r8_padded.size(), 0,
+			FIXTURE_WIDTH + 4 ) &&
+		write_dds( output_dir + "/test_dx10_r8_snorm.dds",
+			DXGI_FORMAT_R8_SNORM, 1, 0, r8_snorm.data(), r8_snorm.size(), 0 ) &&
+		write_dds( output_dir + "/test_dx10_rg8_unorm.dds",
+			DXGI_FORMAT_R8G8_UNORM, 2, 0, rg8.data(), rg8.size(), 0 ) &&
+		write_dds( output_dir + "/test_dx10_rg8_snorm.dds",
+			DXGI_FORMAT_R8G8_SNORM, 2, 0, rg8_snorm.data(), rg8_snorm.size(), 0 ) &&
+		write_dds( output_dir + "/test_dx10_r16_unorm.dds",
+			DXGI_FORMAT_R16_UNORM, 2, 0, r16.data(), r16.size() * sizeof( uint16_t ), 0 ) &&
+		write_dds( output_dir + "/test_dx10_rg16_unorm.dds",
+			DXGI_FORMAT_R16G16_UNORM, 4, 0, rg16.data(), rg16.size() * sizeof( uint16_t ), 0 ) &&
+		write_dds( output_dir + "/test_dx10_r16_float.dds",
+			DXGI_FORMAT_R16_FLOAT, 2, 0, r16f.data(), r16f.size() * sizeof( uint16_t ), 0 ) &&
+		write_dds( output_dir + "/test_dx10_rg16_float.dds",
+			DXGI_FORMAT_R16G16_FLOAT, 4, 0, rg16f.data(), rg16f.size() * sizeof( uint16_t ), 0 ) &&
+		write_dds( output_dir + "/test_dx10_r32_float.dds",
+			DXGI_FORMAT_R32_FLOAT, 4, 0, r32f.data(), r32f.size() * sizeof( float ), 0 ) &&
+		write_dds( output_dir + "/test_dx10_rg32_float.dds",
+			DXGI_FORMAT_R32G32_FLOAT, 8, 0, rg32f.data(), rg32f.size() * sizeof( float ), 0 ) &&
+		write_dds( output_dir + "/test_dx10_rgb10a2_unorm.dds",
+			DXGI_FORMAT_R10G10B10A2_UNORM, 4, 0,
+			rgb10a2.data(), rgb10a2.size() * sizeof( uint32_t ), 0 ) &&
+		write_dds( output_dir + "/test_dx10_r11g11b10_float.dds",
+			DXGI_FORMAT_R11G11B10_FLOAT, 4, 0,
+			r11g11b10.data(), r11g11b10.size() * sizeof( uint32_t ), 0 );
 }
 
 static int write_hdr_fixture( const std::string& output_dir )
@@ -444,6 +573,8 @@ int main( int argc, char** argv )
 	const std::string output_dir = argc > 1 ? argv[1] : ".";
 
 	if( !write_high_precision_fixtures( output_dir ) )
+		return 1;
+	if( !write_uncompressed_dxgi_fixtures( output_dir ) )
 		return 1;
 	if( !write_hdr_fixture( output_dir ) )
 		return 1;
