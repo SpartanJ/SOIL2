@@ -185,9 +185,17 @@ int query_texture_float_capability( void );
 #define SOIL_RGBA_S3TC_DXT1		0x83F1
 #define SOIL_RGBA_S3TC_DXT3		0x83F2
 #define SOIL_RGBA_S3TC_DXT5		0x83F3
+#define SOIL_COMPRESSED_RED_RGTC1	0x8DBB
+#define SOIL_COMPRESSED_SIGNED_RED_RGTC1	0x8DBC
 #define SOIL_COMPRESSED_RG_RGTC2	0x8DBD
+#define SOIL_COMPRESSED_SIGNED_RG_RGTC2	0x8DBE
+#define SOIL_COMPRESSED_RGBA_BPTC_UNORM 0x8E8C
+#define SOIL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM 0x8E8D
+#define SOIL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT 0x8E8E
 #define SOIL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT 0x8E8F
 #define SOIL_GL_COMPRESSED_SRGB_S3TC_DXT1_EXT  0x8C4C
+#define SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT 0x8C4D
+#define SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT 0x8C4E
 #define SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
 static int has_sRGB_capability = SOIL_CAPABILITY_UNKNOWN;
 int query_sRGB_capability( void );
@@ -3115,9 +3123,15 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	enum Magics
 	{
 		DXT1 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '1' << 24 ),
+		DXT2 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '2' << 24 ),
 		DXT3 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '3' << 24 ),
+		DXT4 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '4' << 24 ),
 		DXT5 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '5' << 24 ),
+		ATI1 = ( 'A' << 0 ) | ( 'T' << 8 ) | ( 'I' << 16 ) | ( '1' << 24 ),
 		ATI2 = ( 'A' << 0 ) | ( 'T' << 8 ) | ( 'I' << 16 ) | ( '2' << 24 ),
+		BC4U = ( 'B' << 0 ) | ( 'C' << 8 ) | ( '4' << 16 ) | ( 'U' << 24 ),
+		BC4S = ( 'B' << 0 ) | ( 'C' << 8 ) | ( '4' << 16 ) | ( 'S' << 24 ),
+		BC5S = ( 'B' << 0 ) | ( 'C' << 8 ) | ( '5' << 16 ) | ( 'S' << 24 ),
 		DX10 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( '1' << 16 ) | ( '0' << 24 ),
 		A16B16G16R16 = 36,
 		A16B16G16R16F = 113,
@@ -3149,9 +3163,15 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	// make sure it is a type we can upload
 	if ((header.sPixelFormat.dwFlags & DDPF_FOURCC)
 		&& header.sPixelFormat.dwFourCC != DXT1
+		&& header.sPixelFormat.dwFourCC != DXT2
 		&& header.sPixelFormat.dwFourCC != DXT3
+		&& header.sPixelFormat.dwFourCC != DXT4
 		&& header.sPixelFormat.dwFourCC != DXT5
+		&& header.sPixelFormat.dwFourCC != ATI1
 		&& header.sPixelFormat.dwFourCC != ATI2
+		&& header.sPixelFormat.dwFourCC != BC4U
+		&& header.sPixelFormat.dwFourCC != BC4S
+		&& header.sPixelFormat.dwFourCC != BC5S
 		&& header.sPixelFormat.dwFourCC != DX10
 		&& header.sPixelFormat.dwFourCC != A16B16G16R16
 		&& header.sPixelFormat.dwFourCC != A16B16G16R16F
@@ -3173,6 +3193,14 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	unsigned int external_format = 0;
 	unsigned int block_size = 16;
 	int high_precision_format = 0;
+	int srgb_compressed_format = 0;
+	enum
+	{
+		DDS_COMPRESSION_NONE,
+		DDS_COMPRESSION_S3TC,
+		DDS_COMPRESSION_RGTC,
+		DDS_COMPRESSION_BPTC
+	} compression_family = DDS_COMPRESSION_NONE;
 
 	if( header.sPixelFormat.dwFourCC == A16B16G16R16 ||
 	    ( header.sPixelFormat.dwFourCC == DX10 &&
@@ -3273,29 +3301,117 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		case DXT1:
 			internal_format = SOIL_RGBA_S3TC_DXT1;
 			block_size = 8;
+			compression_family = DDS_COMPRESSION_S3TC;
 			break;
+		case DXT2:
 		case DXT3:
 			internal_format = SOIL_RGBA_S3TC_DXT3;
 			block_size = 16;
+			compression_family = DDS_COMPRESSION_S3TC;
 			break;
+		case DXT4:
 		case DXT5:
 			internal_format = SOIL_RGBA_S3TC_DXT5;
 			block_size = 16;
+			compression_family = DDS_COMPRESSION_S3TC;
+			break;
+		case ATI1:
+		case BC4U:
+			block_size = 8;
+			internal_format = SOIL_COMPRESSED_RED_RGTC1;
+			compression_family = DDS_COMPRESSION_RGTC;
+			break;
+		case BC4S:
+			block_size = 8;
+			internal_format = SOIL_COMPRESSED_SIGNED_RED_RGTC1;
+			compression_family = DDS_COMPRESSION_RGTC;
 			break;
 		case ATI2:
 			block_size = 16;
 			internal_format = SOIL_COMPRESSED_RG_RGTC2;
+			compression_family = DDS_COMPRESSION_RGTC;
+			break;
+		case BC5S:
+			block_size = 16;
+			internal_format = SOIL_COMPRESSED_SIGNED_RG_RGTC2;
+			compression_family = DDS_COMPRESSION_RGTC;
 			break;
 		case DX10:
 			switch( dx10_header.dxgiFormat )
 			{
+			case DXGI_FORMAT_BC1_UNORM:
+				block_size = 8;
+				internal_format = SOIL_RGBA_S3TC_DXT1;
+				compression_family = DDS_COMPRESSION_S3TC;
+				break;
+			case DXGI_FORMAT_BC1_UNORM_SRGB:
+				block_size = 8;
+				internal_format = SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT;
+				compression_family = DDS_COMPRESSION_S3TC;
+				srgb_compressed_format = 1;
+				break;
+			case DXGI_FORMAT_BC2_UNORM:
+				block_size = 16;
+				internal_format = SOIL_RGBA_S3TC_DXT3;
+				compression_family = DDS_COMPRESSION_S3TC;
+				break;
+			case DXGI_FORMAT_BC2_UNORM_SRGB:
+				block_size = 16;
+				internal_format = SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT;
+				compression_family = DDS_COMPRESSION_S3TC;
+				srgb_compressed_format = 1;
+				break;
+			case DXGI_FORMAT_BC3_UNORM:
+				block_size = 16;
+				internal_format = SOIL_RGBA_S3TC_DXT5;
+				compression_family = DDS_COMPRESSION_S3TC;
+				break;
+			case DXGI_FORMAT_BC3_UNORM_SRGB:
+				block_size = 16;
+				internal_format = SOIL_GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT;
+				compression_family = DDS_COMPRESSION_S3TC;
+				srgb_compressed_format = 1;
+				break;
+			case DXGI_FORMAT_BC4_UNORM:
+				block_size = 8;
+				internal_format = SOIL_COMPRESSED_RED_RGTC1;
+				compression_family = DDS_COMPRESSION_RGTC;
+				break;
+			case DXGI_FORMAT_BC4_SNORM:
+				block_size = 8;
+				internal_format = SOIL_COMPRESSED_SIGNED_RED_RGTC1;
+				compression_family = DDS_COMPRESSION_RGTC;
+				break;
 			case DXGI_FORMAT_BC5_UNORM:
 				block_size = 16;
 				internal_format = SOIL_COMPRESSED_RG_RGTC2;
+				compression_family = DDS_COMPRESSION_RGTC;
+				break;
+			case DXGI_FORMAT_BC5_SNORM:
+				block_size = 16;
+				internal_format = SOIL_COMPRESSED_SIGNED_RG_RGTC2;
+				compression_family = DDS_COMPRESSION_RGTC;
 				break;
 			case DXGI_FORMAT_BC6H_UF16:
 				block_size = 16;
 				internal_format = SOIL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT;
+				compression_family = DDS_COMPRESSION_BPTC;
+				break;
+			case DXGI_FORMAT_BC6H_SF16:
+				block_size = 16;
+				internal_format = SOIL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT;
+				compression_family = DDS_COMPRESSION_BPTC;
+				break;
+			case DXGI_FORMAT_BC7_UNORM:
+				block_size = 16;
+				internal_format = SOIL_COMPRESSED_RGBA_BPTC_UNORM;
+				compression_family = DDS_COMPRESSION_BPTC;
+				break;
+			case DXGI_FORMAT_BC7_UNORM_SRGB:
+				block_size = 16;
+				internal_format = SOIL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM;
+				compression_family = DDS_COMPRESSION_BPTC;
+				srgb_compressed_format = 1;
 				break;
 			default:
 				result_string_pointer = "Unsupported DXGI format for direct DDS upload";
@@ -3312,6 +3428,12 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		result_string_pointer = "Floating-point textures not supported by the OpenGL driver";
 		return 0;
 	}
+	if( srgb_compressed_format &&
+	    query_sRGB_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		result_string_pointer = "sRGB textures not supported by the OpenGL driver";
+		return 0;
+	}
 
 	if( !block_compressed )
 	{
@@ -3319,19 +3441,15 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 	}
 	else
 	{
-		if( header.sPixelFormat.dwFourCC == ATI2 ||
-		    ( header.sPixelFormat.dwFourCC == DX10 &&
-		      dx10_header.dxgiFormat == DXGI_FORMAT_BC5_UNORM ) )
+		if( compression_family == DDS_COMPRESSION_RGTC )
 		{
 			if( query_3Dc_capability() != SOIL_CAPABILITY_PRESENT )
 			{
-				/*	we can't do it!	*/
-				result_string_pointer = "Direct upload of 3Dc images not supported by the OpenGL driver";
+				result_string_pointer = "Direct upload of RGTC images not supported by the OpenGL driver";
 				return 0;
 			}
 		}
-		else if( header.sPixelFormat.dwFourCC == DX10 &&
-		         dx10_header.dxgiFormat == DXGI_FORMAT_BC6H_UF16 )
+		else if( compression_family == DDS_COMPRESSION_BPTC )
 		{
 			if( query_BPTC_capability() != SOIL_CAPABILITY_PRESENT )
 			{
@@ -3339,7 +3457,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 				return 0;
 			}
 		}
-		else
+		else if( compression_family == DDS_COMPRESSION_S3TC )
 		{
 			if( query_DXT_capability() != SOIL_CAPABILITY_PRESENT )
 			{

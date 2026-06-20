@@ -74,14 +74,16 @@ Can take a single image file where width = 6*height (or vice versa), split it in
 **DDS support**
 -------------
 
-* BC1 - Compress, decompress, direct GPU upload (a.k.a. DXT1)
-* BC2 - decompress, direct GPU upload (a.k.a. DXT2, DXT3)
-* BC3 - Compress, decompress, direct GPU upload (a.k.a. DXT4, DXT5)
+* BC1 UNORM and sRGB - Compress, decompress, direct GPU upload (a.k.a. DXT1)
+* BC2 UNORM and sRGB - decompress, direct GPU upload (a.k.a. DXT2, DXT3)
+* BC3 UNORM and sRGB - Compress, decompress, direct GPU upload (a.k.a. DXT4, DXT5)
 * BC3n - direct GPU upload
-* BC5u - direct GPU upload (a.k.a. 3Dc, ATI2, RGTC2)
-* BC6H_UF16 - direct GPU upload (requires OpenGL BPTC texture compression support). BC6H stores
+* BC4 UNORM and SNORM - direct GPU upload (a.k.a. ATI1, BC4U, BC4S, RGTC1)
+* BC5 UNORM and SNORM - direct GPU upload (a.k.a. 3Dc, ATI2, BC5S, RGTC2)
+* BC6H UF16 and SF16 - direct GPU upload (requires OpenGL BPTC texture compression support). BC6H stores
   linear HDR values, so displaying it directly in a normalized framebuffer requires exposure and
   tone mapping in the application's shader.
+* BC7 UNORM and sRGB - direct GPU upload (requires OpenGL BPTC texture compression support)
 * RGBA16 UNORM - direct GPU upload (DX10 and legacy D3DFMT_A16B16G16R16 DDS)
 * RGBA16 FLOAT - direct GPU upload (DX10 and legacy D3DFMT_A16B16G16R16F DDS)
 * RGBA32 FLOAT - direct GPU upload (DX10 and legacy D3DFMT_A32B32G32R32F DDS)
@@ -91,8 +93,9 @@ currently loaded directly.
 
 The `bin/test_*.dds` fixtures use procedural gradients and checkerboards created by SOIL2's
 `soil2_generate_dds_fixtures` test utility; they do not contain third-party image content. Pass the
-output directory as its first argument to regenerate them. Creating the BC6H fixture requires an
-OpenGL driver with BPTC support.
+output directory as its first argument to regenerate them. Creating all compressed fixtures requires
+an OpenGL driver with S3TC, RGTC, and BPTC support. Run
+`bin/soil2-dds-test-release bin` to validate their direct upload and GPU readback.
 
 **Native HDR texture support**
 ------------------------------

@@ -23,6 +23,51 @@
 #ifndef GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT
 #define GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT 0x8E8F
 #endif
+#ifndef GL_RED
+#define GL_RED 0x1903
+#endif
+#ifndef GL_RG
+#define GL_RG 0x8227
+#endif
+#ifndef GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT
+#define GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT 0x8E8E
+#endif
+#ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
+#define GL_COMPRESSED_RGBA_BPTC_UNORM 0x8E8C
+#endif
+#ifndef GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
+#define GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM 0x8E8D
+#endif
+#ifndef GL_COMPRESSED_RED_RGTC1
+#define GL_COMPRESSED_RED_RGTC1 0x8DBB
+#endif
+#ifndef GL_COMPRESSED_SIGNED_RED_RGTC1
+#define GL_COMPRESSED_SIGNED_RED_RGTC1 0x8DBC
+#endif
+#ifndef GL_COMPRESSED_RG_RGTC2
+#define GL_COMPRESSED_RG_RGTC2 0x8DBD
+#endif
+#ifndef GL_COMPRESSED_SIGNED_RG_RGTC2
+#define GL_COMPRESSED_SIGNED_RG_RGTC2 0x8DBE
+#endif
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
+#define GL_COMPRESSED_RGBA_S3TC_DXT1_EXT 0x83F1
+#endif
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
+#define GL_COMPRESSED_RGBA_S3TC_DXT3_EXT 0x83F2
+#endif
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+#define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT 0x83F3
+#endif
+#ifndef GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT
+#define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT 0x8C4D
+#endif
+#ifndef GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT
+#define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT 0x8C4E
+#endif
+#ifndef GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT
+#define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
+#endif
 #ifndef GL_TEXTURE_COMPRESSED_IMAGE_SIZE
 #define GL_TEXTURE_COMPRESSED_IMAGE_SIZE 0x86A0
 #endif
@@ -92,7 +137,8 @@ static std::vector<float> make_procedural_rgba( int face )
 	return pixels;
 }
 
-static DDS_header make_header( unsigned int bytes_per_pixel, int cubemap )
+static DDS_header make_header(
+	unsigned int bytes_per_pixel, unsigned int compressed_block_size, int cubemap )
 {
 	DDS_header header;
 	memset( &header, 0, sizeof( header ) );
@@ -104,7 +150,8 @@ static DDS_header make_header( unsigned int bytes_per_pixel, int cubemap )
 	header.dwWidth = FIXTURE_WIDTH;
 	header.dwPitchOrLinearSize =
 		bytes_per_pixel ? FIXTURE_WIDTH * bytes_per_pixel :
-		                  ( ( FIXTURE_WIDTH + 3 ) / 4 ) * 16;
+		                  ( ( FIXTURE_WIDTH + 3 ) / 4 ) *
+		                  ( ( FIXTURE_HEIGHT + 3 ) / 4 ) * compressed_block_size;
 	header.sPixelFormat.dwSize = 32;
 	header.sPixelFormat.dwFlags = DDPF_FOURCC;
 	header.sPixelFormat.dwFourCC = DDS_FOURCC_DX10;
@@ -134,7 +181,8 @@ static DDS_HEADER_DXT10 make_dx10_header( DXGI_FORMAT format, int cubemap )
 }
 
 static int write_dds( const std::string& path, DXGI_FORMAT format,
-                      unsigned int bytes_per_pixel, const void* data, size_t data_size,
+                      unsigned int bytes_per_pixel, unsigned int compressed_block_size,
+                      const void* data, size_t data_size,
                       int cubemap )
 {
 	FILE* output = fopen( path.c_str(), "wb" );
@@ -144,11 +192,34 @@ static int write_dds( const std::string& path, DXGI_FORMAT format,
 		return 0;
 	}
 
-	const DDS_header header = make_header( bytes_per_pixel, cubemap );
+	const DDS_header header = make_header( bytes_per_pixel, compressed_block_size, cubemap );
 	const DDS_HEADER_DXT10 dx10_header = make_dx10_header( format, cubemap );
 	const int success =
 		fwrite( &header, sizeof( header ), 1, output ) == 1 &&
 		fwrite( &dx10_header, sizeof( dx10_header ), 1, output ) == 1 &&
+		fwrite( data, data_size, 1, output ) == 1;
+	fclose( output );
+
+	if( !success )
+		fprintf( stderr, "Could not write %s\n", path.c_str() );
+	return success;
+}
+
+static int write_legacy_dds(
+	const std::string& path, uint32_t fourcc, unsigned int compressed_block_size,
+	const void* data, size_t data_size )
+{
+	FILE* output = fopen( path.c_str(), "wb" );
+	if( NULL == output )
+	{
+		fprintf( stderr, "Could not open %s\n", path.c_str() );
+		return 0;
+	}
+
+	DDS_header header = make_header( 0, compressed_block_size, 0 );
+	header.sPixelFormat.dwFourCC = fourcc;
+	const int success =
+		fwrite( &header, sizeof( header ), 1, output ) == 1 &&
 		fwrite( data, data_size, 1, output ) == 1;
 	fclose( output );
 
@@ -172,13 +243,13 @@ static int write_high_precision_fixtures( const std::string& output_dir )
 
 	return
 		write_dds( output_dir + "/test_rgba16_unorm.dds",
-		           DXGI_FORMAT_R16G16B16A16_UNORM, 8,
+		           DXGI_FORMAT_R16G16B16A16_UNORM, 8, 0,
 		           rgba16_unorm.data(), rgba16_unorm.size() * sizeof( uint16_t ), 0 ) &&
 		write_dds( output_dir + "/test_rgba16_float.dds",
-		           DXGI_FORMAT_R16G16B16A16_FLOAT, 8,
+		           DXGI_FORMAT_R16G16B16A16_FLOAT, 8, 0,
 		           rgba16_float.data(), rgba16_float.size() * sizeof( uint16_t ), 0 ) &&
 		write_dds( output_dir + "/test_rgba32_float.dds",
-		           DXGI_FORMAT_R32G32B32A32_FLOAT, 16,
+		           DXGI_FORMAT_R32G32B32A32_FLOAT, 16, 0,
 		           source.data(), source.size() * sizeof( float ), 0 );
 }
 
@@ -208,21 +279,24 @@ static int write_hdr_fixture( const std::string& output_dir )
 	return 1;
 }
 
-static int encode_bc6h_face( const std::vector<float>& rgba, std::vector<unsigned char>* blocks )
+static int encode_compressed(
+	GLenum internal_format, GLenum external_format, const std::vector<float>& rgba,
+	std::vector<unsigned char>* blocks )
 {
-	std::vector<float> rgb( FIXTURE_WIDTH * FIXTURE_HEIGHT * 3 );
-	for( int i = 0; i < FIXTURE_WIDTH * FIXTURE_HEIGHT; ++i )
+	const int channels = external_format == GL_RED ? 1 : external_format == GL_RG ? 2 :
+		external_format == GL_RGB ? 3 : 4;
+	std::vector<float> source( FIXTURE_WIDTH * FIXTURE_HEIGHT * channels );
+	for( int pixel = 0; pixel < FIXTURE_WIDTH * FIXTURE_HEIGHT; ++pixel )
 	{
-		rgb[i * 3 + 0] = rgba[i * 4 + 0] * 4.0f;
-		rgb[i * 3 + 1] = rgba[i * 4 + 1] * 4.0f;
-		rgb[i * 3 + 2] = rgba[i * 4 + 2] * 4.0f;
+		for( int channel = 0; channel < channels; ++channel )
+			source[pixel * channels + channel] = rgba[pixel * 4 + channel];
 	}
 
 	GLuint texture = 0;
 	glGenTextures( 1, &texture );
 	glBindTexture( GL_TEXTURE_2D, texture );
-	glTexImage2D( GL_TEXTURE_2D, 0, GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT,
-	              FIXTURE_WIDTH, FIXTURE_HEIGHT, 0, GL_RGB, GL_FLOAT, rgb.data() );
+	glTexImage2D( GL_TEXTURE_2D, 0, internal_format,
+	              FIXTURE_WIDTH, FIXTURE_HEIGHT, 0, external_format, GL_FLOAT, source.data() );
 	if( glGetError() != GL_NO_ERROR )
 	{
 		glDeleteTextures( 1, &texture );
@@ -247,20 +321,122 @@ static int encode_bc6h_face( const std::vector<float>& rgba, std::vector<unsigne
 	return success;
 }
 
-static int write_bc6h_fixture( const std::string& output_dir )
+struct CompressedFixture
+{
+	const char* name;
+	DXGI_FORMAT dxgi_format;
+	GLenum internal_format;
+	GLenum external_format;
+	unsigned int block_size;
+	int signed_values;
+	int hdr_values;
+};
+
+static std::vector<float> make_compressed_source( int signed_values, int hdr_values )
+{
+	std::vector<float> source = make_procedural_rgba( 0 );
+	for( size_t i = 0; i < source.size(); i += 4 )
+	{
+		if( signed_values )
+		{
+			source[i + 0] = source[i + 0] * 2.0f - 1.0f;
+			source[i + 1] = source[i + 1] * 2.0f - 1.0f;
+		}
+		if( hdr_values )
+		{
+			source[i + 0] *= 4.0f;
+			source[i + 1] *= 4.0f;
+			source[i + 2] *= 4.0f;
+		}
+	}
+	return source;
+}
+
+static int write_common_compressed_fixtures( const std::string& output_dir )
+{
+	static const CompressedFixture fixtures[] = {
+		{ "bc1_unorm", DXGI_FORMAT_BC1_UNORM, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_RGBA, 8, 0, 0 },
+		{ "bc1_srgb", DXGI_FORMAT_BC1_UNORM_SRGB, GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT, GL_RGBA, 8, 0, 0 },
+		{ "bc2_unorm", DXGI_FORMAT_BC2_UNORM, GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, GL_RGBA, 16, 0, 0 },
+		{ "bc2_srgb", DXGI_FORMAT_BC2_UNORM_SRGB, GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT, GL_RGBA, 16, 0, 0 },
+		{ "bc3_unorm", DXGI_FORMAT_BC3_UNORM, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GL_RGBA, 16, 0, 0 },
+		{ "bc3_srgb", DXGI_FORMAT_BC3_UNORM_SRGB, GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT, GL_RGBA, 16, 0, 0 },
+		{ "bc4_unorm", DXGI_FORMAT_BC4_UNORM, GL_COMPRESSED_RED_RGTC1, GL_RED, 8, 0, 0 },
+		{ "bc4_snorm", DXGI_FORMAT_BC4_SNORM, GL_COMPRESSED_SIGNED_RED_RGTC1, GL_RED, 8, 1, 0 },
+		{ "bc5_unorm", DXGI_FORMAT_BC5_UNORM, GL_COMPRESSED_RG_RGTC2, GL_RG, 16, 0, 0 },
+		{ "bc5_snorm", DXGI_FORMAT_BC5_SNORM, GL_COMPRESSED_SIGNED_RG_RGTC2, GL_RG, 16, 1, 0 },
+		{ "bc6h_uf16", DXGI_FORMAT_BC6H_UF16, GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT, GL_RGB, 16, 0, 1 },
+		{ "bc6h_sf16", DXGI_FORMAT_BC6H_SF16, GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT, GL_RGB, 16, 1, 1 },
+		{ "bc7_unorm", DXGI_FORMAT_BC7_UNORM, GL_COMPRESSED_RGBA_BPTC_UNORM, GL_RGBA, 16, 0, 0 },
+		{ "bc7_srgb", DXGI_FORMAT_BC7_UNORM_SRGB, GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM, GL_RGBA, 16, 0, 0 }
+	};
+	std::vector<std::vector<unsigned char> > encoded(
+		sizeof( fixtures ) / sizeof( fixtures[0] ) );
+
+	for( size_t i = 0; i < encoded.size(); ++i )
+	{
+		const std::vector<float> source =
+			make_compressed_source( fixtures[i].signed_values, fixtures[i].hdr_values );
+		if( !encode_compressed(
+				fixtures[i].internal_format, fixtures[i].external_format, source, &encoded[i] ) )
+		{
+			fprintf( stderr, "OpenGL could not encode %s fixture data\n", fixtures[i].name );
+			return 0;
+		}
+		if( !write_dds(
+				output_dir + "/test_dx10_" + fixtures[i].name + ".dds",
+				fixtures[i].dxgi_format, 0, fixtures[i].block_size,
+				encoded[i].data(), encoded[i].size(), 0 ) )
+			return 0;
+	}
+
+	enum
+	{
+		FOURCC_DXT2 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '2' << 24 ),
+		FOURCC_DXT4 = ( 'D' << 0 ) | ( 'X' << 8 ) | ( 'T' << 16 ) | ( '4' << 24 ),
+		FOURCC_ATI1 = ( 'A' << 0 ) | ( 'T' << 8 ) | ( 'I' << 16 ) | ( '1' << 24 ),
+		FOURCC_BC4U = ( 'B' << 0 ) | ( 'C' << 8 ) | ( '4' << 16 ) | ( 'U' << 24 ),
+		FOURCC_BC4S = ( 'B' << 0 ) | ( 'C' << 8 ) | ( '4' << 16 ) | ( 'S' << 24 ),
+		FOURCC_BC5S = ( 'B' << 0 ) | ( 'C' << 8 ) | ( '5' << 16 ) | ( 'S' << 24 )
+	};
+
+	return
+		write_legacy_dds( output_dir + "/test_legacy_dxt2.dds", FOURCC_DXT2, 16,
+			encoded[2].data(), encoded[2].size() ) &&
+		write_legacy_dds( output_dir + "/test_legacy_dxt4.dds", FOURCC_DXT4, 16,
+			encoded[4].data(), encoded[4].size() ) &&
+		write_legacy_dds( output_dir + "/test_legacy_ati1.dds", FOURCC_ATI1, 8,
+			encoded[6].data(), encoded[6].size() ) &&
+		write_legacy_dds( output_dir + "/test_legacy_bc4u.dds", FOURCC_BC4U, 8,
+			encoded[6].data(), encoded[6].size() ) &&
+		write_legacy_dds( output_dir + "/test_legacy_bc4s.dds", FOURCC_BC4S, 8,
+			encoded[7].data(), encoded[7].size() ) &&
+		write_legacy_dds( output_dir + "/test_legacy_bc5s.dds", FOURCC_BC5S, 16,
+			encoded[9].data(), encoded[9].size() );
+}
+
+static int write_bc6h_cubemap_fixture( const std::string& output_dir )
 {
 	std::vector<unsigned char> blocks;
 	for( int face = 0; face < 6; ++face )
 	{
-		if( !encode_bc6h_face( make_procedural_rgba( face ), &blocks ) )
+		std::vector<float> source = make_procedural_rgba( face );
+		for( size_t i = 0; i < source.size(); i += 4 )
 		{
-			fprintf( stderr, "OpenGL could not encode BC6H fixture data\n" );
+			source[i + 0] *= 4.0f;
+			source[i + 1] *= 4.0f;
+			source[i + 2] *= 4.0f;
+		}
+		if( !encode_compressed(
+			GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT, GL_RGB, source, &blocks ) )
+		{
+			fprintf( stderr, "OpenGL could not encode BC6H cubemap fixture data\n" );
 			return 0;
 		}
 	}
 
 	return write_dds( output_dir + "/test_bc6h_uf16_cubemap.dds",
-	                  DXGI_FORMAT_BC6H_UF16, 0, blocks.data(), blocks.size(), 1 );
+	                  DXGI_FORMAT_BC6H_UF16, 0, 16, blocks.data(), blocks.size(), 1 );
 }
 
 int main( int argc, char** argv )
@@ -301,7 +477,9 @@ int main( int argc, char** argv )
 		return 1;
 	}
 
-	const int success = write_bc6h_fixture( output_dir );
+	const int success =
+		write_common_compressed_fixtures( output_dir ) &&
+		write_bc6h_cubemap_fixture( output_dir );
 	SDL_GL_DeleteContext( context );
 	SDL_DestroyWindow( window );
 	SDL_Quit();
