@@ -2,6 +2,8 @@ Simple OpenGL Image Library 2 ![SOIL2](https://web.ensoft.dev/soil2/soil2-logo.s
 =============================
 
 [![build status](https://img.shields.io/github/actions/workflow/status/SpartanJ/SOIL2/main.yml?branch=master)](https://github.com/SpartanJ/SOIL2/actions?query=workflow%3Abuild)
+[![night release status](https://img.shields.io/github/actions/workflow/status/MasterLogick/SOIL2/night-builds.yml?branch=master)](https://github.com/MasterLogick/SOIL2/actions?query=workflow%3Anight-builds)
+
 
 **Introduction:**
 --------------
@@ -191,6 +193,10 @@ Use `+`/`-` or the Up/Down arrow keys to adjust exposure.
 * Added support for OpenGL Core Profile.
 
 * And some minor fixes.
+
+**Night Builds**
+------------
+You can find night builds of SOIL2 [here](https://github.com/MasterLogick/SOIL2).
 
 **Compiling:**
 ------------
