@@ -95,6 +95,9 @@
 #define GL_BGRA 0x80E1
 #endif
 
+#ifndef GL_RED
+#define GL_RED 0x1903
+#endif
 #ifndef GL_RG
 #define GL_RG 0x8227
 #endif
