@@ -74,6 +74,10 @@ if(SOIL2_BUILD_TESTS)
     )
     target_link_libraries(soil2_generate_dds_fixtures SDL2::SDL2 OpenGL::GL)
 
+    add_executable(soil2_generate_mobile_compressed_fixtures
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/test/generate_mobile_compressed_fixtures.cpp
+    )
+
     add_executable(soil2_test_hdr
         ${CMAKE_CURRENT_SOURCE_DIR}/src/test/test_HDR.cpp
     )
@@ -83,6 +87,11 @@ if(SOIL2_BUILD_TESTS)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/test/test_DDS.cpp
     )
     target_link_libraries(soil2_test_dds soil2 SDL2::SDL2 OpenGL::GL)
+
+    add_executable(soil2_test_mobile_compressed
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/test/test_MobileCompressed.cpp
+    )
+    target_link_libraries(soil2_test_mobile_compressed soil2 SDL2::SDL2 OpenGL::GL)
 
     # Create symlink to test images
     add_custom_command(

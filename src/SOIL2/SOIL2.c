@@ -249,6 +249,7 @@ static int has_sRGB_capability = SOIL_CAPABILITY_UNKNOWN;
 int query_sRGB_capability( void );
 typedef void (APIENTRY * P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC) (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid * data);
 static P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC soilGlCompressedTexImage2D = NULL;
+static P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC get_glCompressedTexImage2D_addr( void );
 
 typedef void (APIENTRY *P_SOIL_GLGENERATEMIPMAPPROC)(GLenum target);
 static P_SOIL_GLGENERATEMIPMAPPROC soilGlGenerateMipmap = NULL;
@@ -262,6 +263,10 @@ static int has_BGRA8888_capability = SOIL_CAPABILITY_UNKNOWN;
 int query_BGRA8888_capability( void );
 static int has_ETC1_capability = SOIL_CAPABILITY_UNKNOWN;
 int query_ETC1_capability( void );
+static int has_ETC2_EAC_capability = SOIL_CAPABILITY_UNKNOWN;
+static int query_ETC2_EAC_capability( void );
+static int has_ASTC_LDR_capability = SOIL_CAPABILITY_UNKNOWN;
+static int query_ASTC_LDR_capability( void );
 
 /* GL_IMG_texture_compression_pvrtc */
 #define SOIL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG                      0x8C00
@@ -269,6 +274,15 @@ int query_ETC1_capability( void );
 #define SOIL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG                     0x8C02
 #define SOIL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG                     0x8C03
 #define SOIL_GL_ETC1_RGB8_OES                                     0x8D64
+#define SOIL_GL_COMPRESSED_R11_EAC                                0x9270
+#define SOIL_GL_COMPRESSED_SIGNED_R11_EAC                         0x9271
+#define SOIL_GL_COMPRESSED_RG11_EAC                               0x9272
+#define SOIL_GL_COMPRESSED_SIGNED_RG11_EAC                        0x9273
+#define SOIL_GL_COMPRESSED_RGB8_ETC2                              0x9274
+#define SOIL_GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2          0x9276
+#define SOIL_GL_COMPRESSED_RGBA8_ETC2_EAC                         0x9278
+#define SOIL_GL_COMPRESSED_RGBA_ASTC_4x4_KHR                      0x93B0
+#define SOIL_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR              0x93D0
 
 #if defined( SOIL_X11_PLATFORM ) || defined( SOIL_PLATFORM_WIN32 ) || defined( SOIL_PLATFORM_OSX ) || defined(__HAIKU__)
 #define SOIL_IMAGE_ARRAY_SUPPORT
@@ -4324,141 +4338,374 @@ unsigned int SOIL_direct_load_PVR(
 	return tex_ID;
 }
 
+static unsigned int SOIL_direct_upload_compressed_2D(
+		const unsigned char *data,
+		unsigned int data_size,
+		unsigned int width,
+		unsigned int height,
+		unsigned int internal_format,
+		unsigned int reuse_texture_ID,
+		int flags )
+{
+	GLuint tex_ID = reuse_texture_ID;
+	const int created_texture = tex_ID == 0;
+
+	if( NULL == soilGlCompressedTexImage2D )
+		soilGlCompressedTexImage2D = get_glCompressedTexImage2D_addr();
+	if( NULL == soilGlCompressedTexImage2D )
+	{
+		result_string_pointer = "glCompressedTexImage2D is unavailable";
+		return 0;
+	}
+	if( created_texture )
+		glGenTextures( 1, &tex_ID );
+	if( tex_ID == 0 )
+	{
+		result_string_pointer = "Could not create an OpenGL texture";
+		return 0;
+	}
+
+	while( glGetError() != GL_NO_ERROR ) {}
+	glBindTexture( GL_TEXTURE_2D, tex_ID );
+	soilGlCompressedTexImage2D(
+		GL_TEXTURE_2D, 0, internal_format, width, height, 0, data_size, data );
+	if( glGetError() != GL_NO_ERROR )
+	{
+		result_string_pointer = "glCompressedTexImage2D failed";
+		if( created_texture )
+			glDeleteTextures( 1, &tex_ID );
+		return 0;
+	}
+
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+	glTexParameteri(
+		GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+		( flags & SOIL_FLAG_TEXTURE_REPEATS ) ? GL_REPEAT : SOIL_CLAMP_TO_EDGE );
+	glTexParameteri(
+		GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+		( flags & SOIL_FLAG_TEXTURE_REPEATS ) ? GL_REPEAT : SOIL_CLAMP_TO_EDGE );
+	result_string_pointer = "Compressed texture loaded";
+	return tex_ID;
+}
+
+static unsigned int SOIL_read_be16( const unsigned char *data )
+{
+	return ( (unsigned int)data[0] << 8 ) | data[1];
+}
+
+unsigned int SOIL_direct_load_PKM_from_memory(
+		const unsigned char *const buffer,
+		int buffer_length,
+		unsigned int reuse_texture_ID,
+		int flags )
+{
+	unsigned int format;
+	unsigned int internal_format;
+	unsigned int block_size;
+	unsigned int encoded_width;
+	unsigned int encoded_height;
+	unsigned int width;
+	unsigned int height;
+	size_t payload_size;
+
+	if( NULL == buffer )
+	{
+		result_string_pointer = "NULL PKM buffer";
+		return 0;
+	}
+	if( buffer_length < PKM_HEADER_SIZE )
+	{
+		result_string_pointer = "PKM file is too small to contain a header";
+		return 0;
+	}
+	if( memcmp( buffer, "PKM 10", 6 ) != 0 && memcmp( buffer, "PKM 20", 6 ) != 0 )
+	{
+		result_string_pointer = "Unsupported PKM version";
+		return 0;
+	}
+
+	format = SOIL_read_be16( buffer + 6 );
+	encoded_width = SOIL_read_be16( buffer + 8 );
+	encoded_height = SOIL_read_be16( buffer + 10 );
+	width = SOIL_read_be16( buffer + 12 );
+	height = SOIL_read_be16( buffer + 14 );
+	if( width == 0 || height == 0 || encoded_width == 0 || encoded_height == 0 ||
+	    encoded_width != ( ( width + 3 ) & ~3u ) ||
+	    encoded_height != ( ( height + 3 ) & ~3u ) )
+	{
+		result_string_pointer = "Invalid PKM dimensions";
+		return 0;
+	}
+
+	switch( format )
+	{
+	case 0:
+		internal_format = SOIL_GL_ETC1_RGB8_OES;
+		block_size = 8;
+		break;
+	case 1:
+		internal_format = SOIL_GL_COMPRESSED_RGB8_ETC2;
+		block_size = 8;
+		break;
+	case 2:
+	case 3:
+		internal_format = SOIL_GL_COMPRESSED_RGBA8_ETC2_EAC;
+		block_size = 16;
+		break;
+	case 4:
+		internal_format = SOIL_GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2;
+		block_size = 8;
+		break;
+	case 5:
+		internal_format = SOIL_GL_COMPRESSED_R11_EAC;
+		block_size = 8;
+		break;
+	case 6:
+		internal_format = SOIL_GL_COMPRESSED_RG11_EAC;
+		block_size = 16;
+		break;
+	case 7:
+		internal_format = SOIL_GL_COMPRESSED_SIGNED_R11_EAC;
+		block_size = 8;
+		break;
+	case 8:
+		internal_format = SOIL_GL_COMPRESSED_SIGNED_RG11_EAC;
+		block_size = 16;
+		break;
+	default:
+		result_string_pointer = "Unsupported PKM texture format";
+		return 0;
+	}
+	if( memcmp( buffer, "PKM 10", 6 ) == 0 && format != 0 )
+	{
+		result_string_pointer = "PKM 1.0 only supports ETC1 RGB8";
+		return 0;
+	}
+
+	payload_size = (size_t)( encoded_width / 4 ) * ( encoded_height / 4 ) * block_size;
+	if( payload_size > 0x7fffffffu ||
+	    (size_t)buffer_length != PKM_HEADER_SIZE + payload_size )
+	{
+		result_string_pointer = "PKM payload size does not match its header";
+		return 0;
+	}
+	if( format == 0 )
+	{
+		const int etc1_supported =
+			query_ETC1_capability() == SOIL_CAPABILITY_PRESENT;
+		if( !etc1_supported &&
+		    query_ETC2_EAC_capability() != SOIL_CAPABILITY_PRESENT )
+		{
+			result_string_pointer = "ETC1 texture compression is not supported by this OpenGL context";
+			return 0;
+		}
+		if( !etc1_supported )
+			internal_format = SOIL_GL_COMPRESSED_RGB8_ETC2;
+	}
+	else if( query_ETC2_EAC_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		result_string_pointer = "ETC2/EAC texture compression is not supported by this OpenGL context";
+		return 0;
+	}
+
+	return SOIL_direct_upload_compressed_2D(
+		buffer + PKM_HEADER_SIZE, (unsigned int)payload_size, width, height,
+		internal_format, reuse_texture_ID, flags );
+}
+
+static unsigned int SOIL_direct_load_compressed_file(
+		const char *filename,
+		unsigned int reuse_texture_ID,
+		int flags,
+		unsigned int ( *memory_loader )(
+			const unsigned char *const, int, unsigned int, int ),
+		const char *not_found_error )
+{
+	FILE *file;
+	unsigned char *buffer;
+	long file_size;
+	size_t bytes_read;
+	unsigned int texture;
+
+	if( NULL == filename )
+	{
+		result_string_pointer = "NULL filename";
+		return 0;
+	}
+	file = fopen( filename, "rb" );
+	if( NULL == file )
+	{
+		result_string_pointer = not_found_error;
+		return 0;
+	}
+	if( fseek( file, 0, SEEK_END ) != 0 || ( file_size = ftell( file ) ) < 0 ||
+	    file_size > 0x7fffffffL || fseek( file, 0, SEEK_SET ) != 0 )
+	{
+		result_string_pointer = "Could not determine compressed texture file size";
+		fclose( file );
+		return 0;
+	}
+	buffer = (unsigned char *)malloc( (size_t)file_size );
+	if( NULL == buffer )
+	{
+		result_string_pointer = "malloc failed";
+		fclose( file );
+		return 0;
+	}
+	bytes_read = fread( buffer, 1, (size_t)file_size, file );
+	fclose( file );
+	if( bytes_read != (size_t)file_size )
+	{
+		result_string_pointer = "Could not read the complete compressed texture file";
+		free( buffer );
+		return 0;
+	}
+	texture = memory_loader( buffer, (int)file_size, reuse_texture_ID, flags );
+	free( buffer );
+	return texture;
+}
+
+unsigned int SOIL_direct_load_PKM(
+		const char *filename,
+		unsigned int reuse_texture_ID,
+		int flags )
+{
+	return SOIL_direct_load_compressed_file(
+		filename, reuse_texture_ID, flags, SOIL_direct_load_PKM_from_memory,
+		"Can not find PKM file" );
+}
+
 unsigned int SOIL_direct_load_ETC1_from_memory(
 		const unsigned char *const buffer,
 		int buffer_length,
 		unsigned int reuse_texture_ID,
 		int flags )
 {
-	GLuint tex_ID = 0;
-	PKMHeader* header = (PKMHeader*)buffer;
-	unsigned int opengl_texture_type = GL_TEXTURE_2D;
-	unsigned int width;
-	unsigned int height;
-	unsigned long compressed_image_size = buffer_length - PKM_HEADER_SIZE;
-	char *texture_ptr = (char*)buffer + PKM_HEADER_SIZE;
-	GLint unpack_aligment;
-
-	if ( query_ETC1_capability() != SOIL_CAPABILITY_PRESENT ) {
-		result_string_pointer = "error: ETC1 not supported. Decompress the texture first.";
-		return 0;
-	}
-
-	if ( 0 != strcmp( header->aName, "PKM 10" ) ) {
-		result_string_pointer = "error: PKM 10 header not found.";
-		return 0;
-	}
-
-	width = (header->iWidthMSB << 8) | header->iWidthLSB;
-	height = (header->iHeightMSB << 8) | header->iHeightLSB;
-	compressed_image_size = (((width + 3) & ~3) * ((height + 3) & ~3)) >> 1;
-
-	// load the texture up
-	tex_ID = reuse_texture_ID;
-	if( tex_ID == 0 )
-	{
-		glGenTextures( 1, &tex_ID );
-	}
-
-	glBindTexture( opengl_texture_type, tex_ID );
-
-	if( glGetError() ) {
-		result_string_pointer = "failed: glBindTexture() failed.";
-		return 0;
-	}
-
-	glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_aligment);
-	if ( 1 != unpack_aligment )
-	{
-		glPixelStorei(GL_UNPACK_ALIGNMENT,1);				// Never have row-aligned in headers
-	}
-
-	soilGlCompressedTexImage2D( opengl_texture_type, 0, SOIL_GL_ETC1_RGB8_OES, width, height, 0, compressed_image_size, texture_ptr );
-
-	if( glGetError() ) {
-		result_string_pointer = "failed: glCompressedTexImage2D() failed.";
-
-		if ( 1 != unpack_aligment )
-		{
-			glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
-		}
-		return 0;
-	}
-
-	if ( 1 != unpack_aligment )
-	{
-		glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
-	}
-
-	if( tex_ID )
-	{
-		/* No MIPmaps for ETC1 */
-		glTexParameteri( opengl_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-		glTexParameteri( opengl_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-
-		/*	does the user want clamping, or wrapping?	*/
-		if( flags & SOIL_FLAG_TEXTURE_REPEATS )
-		{
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_S, GL_REPEAT );
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_T, GL_REPEAT );
-			glTexParameteri( opengl_texture_type, SOIL_TEXTURE_WRAP_R, GL_REPEAT );
-		} else
-		{
-			unsigned int clamp_mode = SOIL_CLAMP_TO_EDGE;
-			/* unsigned int clamp_mode = GL_CLAMP; */
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_S, clamp_mode );
-			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_T, clamp_mode );
-			glTexParameteri( opengl_texture_type, SOIL_TEXTURE_WRAP_R, clamp_mode );
-		}
-	}
-
-	return tex_ID;
+	return SOIL_direct_load_PKM_from_memory(
+		buffer, buffer_length, reuse_texture_ID, flags );
 }
 
-unsigned int SOIL_direct_load_ETC1(const char *filename,
+unsigned int SOIL_direct_load_ETC1(
+		const char *filename,
 		unsigned int reuse_texture_ID,
 		int flags )
 {
-	FILE *f;
-	unsigned char *buffer;
-	size_t buffer_length, bytes_read;
-	unsigned int tex_ID = 0;
-	/*	error checks	*/
-	if( NULL == filename )
+	return SOIL_direct_load_PKM( filename, reuse_texture_ID, flags );
+}
+
+static unsigned int SOIL_read_le24( const unsigned char *data )
+{
+	return (unsigned int)data[0] | ( (unsigned int)data[1] << 8 ) |
+	       ( (unsigned int)data[2] << 16 );
+}
+
+static int SOIL_ASTC_format_index( unsigned int block_x, unsigned int block_y )
+{
+	static const unsigned char footprints[][2] = {
+		{ 4, 4 }, { 5, 4 }, { 5, 5 }, { 6, 5 }, { 6, 6 },
+		{ 8, 5 }, { 8, 6 }, { 8, 8 }, { 10, 5 }, { 10, 6 },
+		{ 10, 8 }, { 10, 10 }, { 12, 10 }, { 12, 12 }
+	};
+	size_t i;
+	for( i = 0; i < sizeof( footprints ) / sizeof( footprints[0] ); ++i )
 	{
-		result_string_pointer = "NULL filename";
-		return 0;
+		if( footprints[i][0] == block_x && footprints[i][1] == block_y )
+			return (int)i;
 	}
-	f = fopen( filename, "rb" );
-	if( NULL == f )
-	{
-		/*	the file doesn't seem to exist (or be open-able)	*/
-		result_string_pointer = "Can not find PVR file";
-		return 0;
-	}
-	fseek( f, 0, SEEK_END );
-	buffer_length = ftell( f );
-	fseek( f, 0, SEEK_SET );
-	buffer = (unsigned char *) malloc( buffer_length );
+	return -1;
+}
+
+unsigned int SOIL_direct_load_ASTC_from_memory(
+		const unsigned char *const buffer,
+		int buffer_length,
+		unsigned int reuse_texture_ID,
+		int flags )
+{
+	unsigned int block_x;
+	unsigned int block_y;
+	unsigned int width;
+	unsigned int height;
+	size_t blocks_x;
+	size_t blocks_y;
+	size_t payload_size;
+	int format_index;
+	unsigned int internal_format;
+
 	if( NULL == buffer )
 	{
-		result_string_pointer = "malloc failed";
-		fclose( f );
+		result_string_pointer = "NULL ASTC buffer";
 		return 0;
 	}
-	bytes_read = fread( (void*)buffer, 1, buffer_length, f );
-	fclose( f );
-	if( bytes_read < buffer_length )
+	if( buffer_length < 16 )
 	{
-		/*	huh?	*/
-		buffer_length = bytes_read;
+		result_string_pointer = "ASTC file is too small to contain a header";
+		return 0;
 	}
-	/*	now try to do the loading	*/
-	tex_ID = SOIL_direct_load_ETC1_from_memory(
-		(const unsigned char *const)buffer, (int)buffer_length,
+	if( buffer[0] != 0x13 || buffer[1] != 0xAB ||
+	    buffer[2] != 0xA1 || buffer[3] != 0x5C )
+	{
+		result_string_pointer = "Invalid ASTC file magic";
+		return 0;
+	}
+
+	block_x = buffer[4];
+	block_y = buffer[5];
+	if( buffer[6] != 1 || SOIL_read_le24( buffer + 13 ) != 1 )
+	{
+		result_string_pointer = "3D ASTC textures are not supported";
+		return 0;
+	}
+	format_index = SOIL_ASTC_format_index( block_x, block_y );
+	if( format_index < 0 )
+	{
+		result_string_pointer = "Unsupported ASTC 2D block footprint";
+		return 0;
+	}
+	width = SOIL_read_le24( buffer + 7 );
+	height = SOIL_read_le24( buffer + 10 );
+	if( width == 0 || height == 0 )
+	{
+		result_string_pointer = "Invalid ASTC dimensions";
+		return 0;
+	}
+	blocks_x = ( (size_t)width + block_x - 1 ) / block_x;
+	blocks_y = ( (size_t)height + block_y - 1 ) / block_y;
+	if( blocks_x > ( (size_t)-1 ) / blocks_y ||
+	    blocks_x * blocks_y > ( (size_t)-1 ) / 16 )
+	{
+		result_string_pointer = "ASTC dimensions overflow the payload size";
+		return 0;
+	}
+	payload_size = blocks_x * blocks_y * 16;
+	if( payload_size > 0x7fffffffu || (size_t)buffer_length != 16 + payload_size )
+	{
+		result_string_pointer = "ASTC payload size does not match its header";
+		return 0;
+	}
+	if( query_ASTC_LDR_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		result_string_pointer = "ASTC LDR texture compression is not supported by this OpenGL context";
+		return 0;
+	}
+
+	internal_format =
+		( flags & SOIL_FLAG_SRGB_COLOR_SPACE ) ?
+			SOIL_GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR + (unsigned int)format_index :
+			SOIL_GL_COMPRESSED_RGBA_ASTC_4x4_KHR + (unsigned int)format_index;
+	return SOIL_direct_upload_compressed_2D(
+		buffer + 16, (unsigned int)payload_size, width, height, internal_format,
 		reuse_texture_ID, flags );
-	free( buffer );
-	return tex_ID;
+}
+
+unsigned int SOIL_direct_load_ASTC(
+		const char *filename,
+		unsigned int reuse_texture_ID,
+		int flags )
+{
+	return SOIL_direct_load_compressed_file(
+		filename, reuse_texture_ID, flags, SOIL_direct_load_ASTC_from_memory,
+		"Can not find ASTC file" );
 }
 
 int query_NPOT_capability( void )
@@ -4765,6 +5012,65 @@ int query_ETC1_capability( void )
 	}
 	/*	let the user know if we can do cubemaps or not	*/
 	return has_ETC1_capability;
+}
+
+static void SOIL_GL_version( int *major, int *minor, int *is_es )
+{
+	const char *version = (const char *)glGetString( GL_VERSION );
+	const char *number = version;
+	*major = 0;
+	*minor = 0;
+	*is_es = 0;
+	if( NULL == version )
+		return;
+	if( strncmp( version, "OpenGL ES", 9 ) == 0 )
+	{
+		*is_es = 1;
+		number = version + 9;
+		while( *number && ( *number < '0' || *number > '9' ) )
+			++number;
+	}
+	sscanf( number, "%d.%d", major, minor );
+}
+
+static int query_ETC2_EAC_capability( void )
+{
+	if( has_ETC2_EAC_capability == SOIL_CAPABILITY_UNKNOWN )
+	{
+		int major;
+		int minor;
+		int is_es;
+		SOIL_GL_version( &major, &minor, &is_es );
+		if( ( is_es && major >= 3 ) ||
+		    ( !is_es && ( major > 4 || ( major == 4 && minor >= 3 ) ) ) ||
+		    SOIL_GL_ExtensionSupported( "GL_ARB_ES3_compatibility" ) )
+		{
+			has_ETC2_EAC_capability = SOIL_CAPABILITY_PRESENT;
+		}
+		else
+		{
+			has_ETC2_EAC_capability = SOIL_CAPABILITY_NONE;
+		}
+	}
+	return has_ETC2_EAC_capability;
+}
+
+static int query_ASTC_LDR_capability( void )
+{
+	if( has_ASTC_LDR_capability == SOIL_CAPABILITY_UNKNOWN )
+	{
+		if( SOIL_GL_ExtensionSupported( "GL_KHR_texture_compression_astc_ldr" ) ||
+		    SOIL_GL_ExtensionSupported( "GL_KHR_texture_compression_astc_hdr" ) ||
+		    SOIL_GL_ExtensionSupported( "GL_OES_texture_compression_astc" ) )
+		{
+			has_ASTC_LDR_capability = SOIL_CAPABILITY_PRESENT;
+		}
+		else
+		{
+			has_ASTC_LDR_capability = SOIL_CAPABILITY_NONE;
+		}
+	}
+	return has_ASTC_LDR_capability;
 }
 
 int query_gen_mipmap_capability( void )

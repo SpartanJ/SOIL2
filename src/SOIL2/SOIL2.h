@@ -766,13 +766,35 @@ unsigned int SOIL_direct_load_PVR_from_memory(
 		int flags,
 		int loading_as_cubemap );
 
-/** Loads the PVR texture directly to the GPU memory ( if supported ) */
+/** Loads a PKM 1.0 or PKM 2.0 texture directly to GPU memory (if supported). */
+unsigned int SOIL_direct_load_PKM(const char *filename,
+		unsigned int reuse_texture_ID,
+		int flags );
+
+/** Loads a PKM 1.0 or PKM 2.0 texture directly to GPU memory (if supported). */
+unsigned int SOIL_direct_load_PKM_from_memory(const unsigned char *const buffer,
+		int buffer_length,
+		unsigned int reuse_texture_ID,
+		int flags );
+
+/** Compatibility wrapper for SOIL_direct_load_PKM(). */
 unsigned int SOIL_direct_load_ETC1(const char *filename,
 		unsigned int reuse_texture_ID,
 		int flags );
 
-/** Loads the PVR texture directly to the GPU memory ( if supported ) */
+/** Compatibility wrapper for SOIL_direct_load_PKM_from_memory(). */
 unsigned int SOIL_direct_load_ETC1_from_memory(const unsigned char *const buffer,
+		int buffer_length,
+		unsigned int reuse_texture_ID,
+		int flags );
+
+/** Loads a standalone 2D LDR ASTC texture directly to GPU memory (if supported). */
+unsigned int SOIL_direct_load_ASTC(const char *filename,
+		unsigned int reuse_texture_ID,
+		int flags );
+
+/** Loads a standalone 2D LDR ASTC texture directly to GPU memory (if supported). */
+unsigned int SOIL_direct_load_ASTC_from_memory(const unsigned char *const buffer,
 		int buffer_length,
 		unsigned int reuse_texture_ID,
 		int flags );
