@@ -1,5 +1,5 @@
 /*
-	adding PKM loading support to stbi
+	PKM 1.0 ETC1 and PKM 2.0 ETC2/EAC loading support for stb_image.
 */
 
 #ifndef HEADER_STB_IMAGE_PKM_AUGMENTATION

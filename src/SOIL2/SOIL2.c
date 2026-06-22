@@ -4443,36 +4443,36 @@ unsigned int SOIL_direct_load_PKM_from_memory(
 
 	switch( format )
 	{
-	case 0:
+	case PKM_FORMAT_ETC1_RGB8:
 		internal_format = SOIL_GL_ETC1_RGB8_OES;
 		block_size = 8;
 		break;
-	case 1:
+	case PKM_FORMAT_ETC2_RGB8:
 		internal_format = SOIL_GL_COMPRESSED_RGB8_ETC2;
 		block_size = 8;
 		break;
-	case 2:
-	case 3:
+	case PKM_FORMAT_ETC2_RGBA8_OLD:
+	case PKM_FORMAT_ETC2_RGBA8:
 		internal_format = SOIL_GL_COMPRESSED_RGBA8_ETC2_EAC;
 		block_size = 16;
 		break;
-	case 4:
+	case PKM_FORMAT_ETC2_RGB8A1:
 		internal_format = SOIL_GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2;
 		block_size = 8;
 		break;
-	case 5:
+	case PKM_FORMAT_EAC_R11:
 		internal_format = SOIL_GL_COMPRESSED_R11_EAC;
 		block_size = 8;
 		break;
-	case 6:
+	case PKM_FORMAT_EAC_RG11:
 		internal_format = SOIL_GL_COMPRESSED_RG11_EAC;
 		block_size = 16;
 		break;
-	case 7:
+	case PKM_FORMAT_EAC_SIGNED_R11:
 		internal_format = SOIL_GL_COMPRESSED_SIGNED_R11_EAC;
 		block_size = 8;
 		break;
-	case 8:
+	case PKM_FORMAT_EAC_SIGNED_RG11:
 		internal_format = SOIL_GL_COMPRESSED_SIGNED_RG11_EAC;
 		block_size = 16;
 		break;
@@ -4480,7 +4480,8 @@ unsigned int SOIL_direct_load_PKM_from_memory(
 		result_string_pointer = "Unsupported PKM texture format";
 		return 0;
 	}
-	if( memcmp( buffer, "PKM 10", 6 ) == 0 && format != 0 )
+	if( memcmp( buffer, "PKM 10", 6 ) == 0 &&
+	    format != PKM_FORMAT_ETC1_RGB8 )
 	{
 		result_string_pointer = "PKM 1.0 only supports ETC1 RGB8";
 		return 0;
@@ -4493,7 +4494,7 @@ unsigned int SOIL_direct_load_PKM_from_memory(
 		result_string_pointer = "PKM payload size does not match its header";
 		return 0;
 	}
-	if( format == 0 )
+	if( format == PKM_FORMAT_ETC1_RGB8 )
 	{
 		const int etc1_supported =
 			query_ETC1_capability() == SOIL_CAPABILITY_PRESENT;

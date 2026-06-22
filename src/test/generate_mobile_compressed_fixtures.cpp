@@ -63,7 +63,34 @@ static int write_pkm(
 	write_be16( data.data() + 14, height );
 
 	for( size_t i = 16; i < data.size(); ++i )
-		data[i] = (unsigned char)( ( i * 37 + format * 19 ) & 0xff );
+		data[i] = format == 0 ? 0 :
+			(unsigned char)( ( i * 37 + format * 19 ) & 0xff );
+
+	/* Exercise every ETC2 RGB mode with deterministic valid mode selectors. */
+	if( format >= 1 && format <= 4 )
+	{
+		const size_t color_offset = ( format == 2 || format == 3 ) ? 8 : 0;
+		const size_t stride = block_size;
+		for( int mode = 0; mode < 5; ++mode )
+		{
+			unsigned char* block = data.data() + 16 + (size_t)mode * stride + color_offset;
+			block[0] = 0x80;
+			block[1] = 0x80;
+			block[2] = 0x80;
+			if( mode == 0 && format != 4 )
+				block[3] &= (unsigned char)~2;
+			else
+			{
+				block[3] |= 2;
+				if( mode == 2 )
+					block[0] = 0x04;
+				else if( mode == 3 )
+					block[1] = 0x04;
+				else if( mode == 4 )
+					block[2] = 0x04;
+			}
+		}
+	}
 	return write_file( path, data );
 }
 

@@ -46,6 +46,34 @@ extern void wfETC1_DecodeBlock( const void* WF_RESTRICT src, void* WF_RESTRICT d
 
 extern void wfETC1_DecodeImage( const void* WF_RESTRICT src, void* WF_RESTRICT dst, const uint32_t width, const uint32_t height ); //!< width/height in pixels; must be multiples of four
 
+enum
+{
+	WF_ETC_FORMAT_ETC1_RGB8 = 0,
+	WF_ETC_FORMAT_ETC2_RGB8 = 1,
+	WF_ETC_FORMAT_ETC2_RGBA8 = 2,
+	WF_ETC_FORMAT_ETC2_RGB8A1 = 3,
+	WF_ETC_FORMAT_EAC_R11 = 4,
+	WF_ETC_FORMAT_EAC_SIGNED_R11 = 5,
+	WF_ETC_FORMAT_EAC_RG11 = 6,
+	WF_ETC_FORMAT_EAC_SIGNED_RG11 = 7
+};
+
+/**
+ * Decode a PKM-compatible ETC/EAC image into tightly packed 8-bit components.
+ * Signed EAC values are mapped from [-1, 1] to [0, 255].
+ * EAC RG11 is returned as RGB with a zero blue component because stb_image's
+ * two-component convention means luminance-alpha rather than red-green.
+ * Returns non-zero on success.
+ */
+extern int wfETC_DecodeImage(
+	const void* WF_RESTRICT src,
+	void* WF_RESTRICT dst,
+	uint32_t width,
+	uint32_t height,
+	uint32_t encoded_width,
+	uint32_t encoded_height,
+	int format );
+
 #ifdef __cplusplus
 }
 #endif
