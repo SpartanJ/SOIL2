@@ -372,6 +372,10 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 	s->img_x = header.dwWidth;
 	s->img_y = header.dwHeight;
 	s->img_n = 4;
+
+	if (!stbi__mad3sizes_valid(s->img_x, s->img_y, s->img_n, 0))
+		return stbi__errpuc("too large", "DDS too large");
+
 	is_compressed = (header.sPixelFormat.dwFlags & DDPF_FOURCC) / DDPF_FOURCC;
 	has_alpha = (header.sPixelFormat.dwFlags & DDPF_ALPHAPIXELS) / DDPF_ALPHAPIXELS;
 	has_mipmap = (header.sCaps.dwCaps1 & DDSCAPS_MIPMAP) && (header.dwMipMapCount > 1);
