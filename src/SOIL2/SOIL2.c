@@ -18,6 +18,10 @@
 
 #define SOIL_CHECK_FOR_GL_ERRORS 0
 
+#if defined( _WIN32 )
+	#include <winapifamily.h>
+#endif
+
 #if defined( __APPLE_CC__ ) || defined ( __APPLE__ )
 	#include <TargetConditionals.h>
 
@@ -29,6 +33,9 @@
 	#endif
 #elif defined( __ANDROID__ ) || defined( ANDROID )
 	#define SOIL_PLATFORM_ANDROID
+#elif defined( _WIN32 ) && defined( WINAPI_FAMILY ) && \
+	WINAPI_FAMILY != WINAPI_FAMILY_DESKTOP_APP
+	#define SOIL_PLATFORM_UWP
 #elif !defined( SOIL_GLES2 ) && !defined( SOIL_GLES1 ) && !defined( SOIL_NO_X11 ) && \
 	!defined( SOIL_EGL ) &&                                                          \
 	( defined( linux ) || defined( __linux__ ) || defined( __FreeBSD__ ) ||          \
@@ -37,7 +44,7 @@
 	#define SOIL_X11_PLATFORM
 #endif
 
-#if ( defined( SOIL_PLATFORM_IOS ) || defined( SOIL_PLATFORM_ANDROID ) ) && ( !defined( SOIL_GLES1 ) && !defined( SOIL_GLES2 ) )
+#if ( defined( SOIL_PLATFORM_IOS ) || defined( SOIL_PLATFORM_ANDROID ) || defined( SOIL_PLATFORM_UWP ) ) && ( !defined( SOIL_GLES1 ) && !defined( SOIL_GLES2 ) )
 	#define SOIL_GLES2
 #endif
 
