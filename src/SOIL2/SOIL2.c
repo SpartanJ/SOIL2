@@ -172,6 +172,10 @@
 #endif
 
 #include "SOIL2.h"
+/* AArch64 always provides NEON; enable stb's existing JPEG kernels. */
+#if ( defined( __aarch64__ ) || defined( _M_ARM64 ) ) && !defined( STBI_NEON )
+#define STBI_NEON
+#endif
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
