@@ -7029,8 +7029,9 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
       stbi_uc *u = 0;
       stbi_uc *out = 0;
       stbi_uc *last_non_disposable = 0;
+      int last_non_disposable_layer = -1;
       stbi__gif g;
-      int stride;
+      int stride = 0;
       int out_size = 0;
       int delays_size = 0;
 
@@ -7043,6 +7044,11 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
       }
 
       do {
+         // Resolve the last-non-disposable frame from the live buffer every iteration:
+         // the realloc below can move 'out', so a pointer cached across iterations would
+         // dangle and be read back by a later dispose==3 frame (CVE-2026-5185). Keep the
+         // layer index instead and recompute the pointer against the current 'out'.
+         last_non_disposable = (last_non_disposable_layer >= 0) ? out + last_non_disposable_layer * stride : 0;
          u = stbi__gif_load_next(s, &g, comp, req_comp, last_non_disposable);
          if (u == (stbi_uc *) s) u = 0;  // end of animated gif marker
 
@@ -7100,7 +7106,7 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
             }
             memcpy( out + ((layers - 1) * stride), u, stride );
             if (((g.eflags & 0x1C) >> 2) <= 1) {
-               last_non_disposable = out;
+               last_non_disposable_layer = layers - 1;
             }
 
             if (delays) {
