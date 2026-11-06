@@ -90,6 +90,11 @@ int
 	header.sCaps.dwCaps1 = DDSCAPS_TEXTURE;
 	/*	write it out	*/
 	fout = fopen( filename, "wb");
+	if( NULL == fout )
+	{
+		free( DDS_data );
+		return 0;
+	}
 	fwrite( &header, sizeof( DDS_header ), 1, fout );
 	fwrite( DDS_data, 1, DDS_size, fout );
 	fclose( fout );
@@ -125,6 +130,11 @@ unsigned char* convert_image_to_DXT1(
 		(8 bytes per 4x4 pixel block)	*/
 	*out_size = ((width+3) >> 2) * ((height+3) >> 2) * 8;
 	compressed = (unsigned char*)malloc( *out_size );
+	if( NULL == compressed )
+	{
+		*out_size = 0;
+		return NULL;
+	}
 	/*	go through each block	*/
 	for( j = 0; j < height; j += 4 )
 	{
@@ -207,6 +217,11 @@ unsigned char* convert_image_to_DXT5(
 		(16 bytes per 4x4 pixel block)	*/
 	*out_size = ((width+3) >> 2) * ((height+3) >> 2) * 16;
 	compressed = (unsigned char*)malloc( *out_size );
+	if( NULL == compressed )
+	{
+		*out_size = 0;
+		return NULL;
+	}
 	/*	go through each block	*/
 	for( j = 0; j < height; j += 4 )
 	{
@@ -609,7 +624,8 @@ void
 	compressed[7] = 0;
 	/*	store the all of the alpha values	*/
 	next_bit = 8*2;
-	scale_me = 7.9999f / (a0 - a1);
+	/*	a uniform block has nothing to scale, every value is 0	*/
+	scale_me = a0 > a1 ? 7.9999f / (a0 - a1) : 0.0f;
 	for( i = 3; i < 16*4; i += 4 )
 	{
 		/*	convert this alpha value to a 3 bit number	*/

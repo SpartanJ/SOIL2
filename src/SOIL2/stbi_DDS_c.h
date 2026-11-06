@@ -380,8 +380,8 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 	s->img_y = header.dwHeight;
 	s->img_n = 4;
 
-	if (!stbi__mad3sizes_valid(s->img_x, s->img_y, s->img_n, 0))
-		return stbi__errpuc("too large", "DDS too large");
+	if( s->img_x == 0 || s->img_y == 0 )
+		return stbi__errpuc("bad size", "Corrupt DDS");
 
 	is_compressed = (header.sPixelFormat.dwFlags & DDPF_FOURCC) / DDPF_FOURCC;
 	has_alpha = (header.sPixelFormat.dwFlags & DDPF_ALPHAPIXELS) / DDPF_ALPHAPIXELS;
@@ -391,6 +391,15 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 	cubemap_faces &= (s->img_x == s->img_y);
 	cubemap_faces *= 5;
 	cubemap_faces += 1;
+
+	/*	img_n is at most 4, so this covers both branches below	*/
+	if (!stbi__mad3sizes_valid(s->img_x, s->img_y, s->img_n*cubemap_faces, 0))
+		return stbi__errpuc("too large", "DDS too large");
+
+	/*	no valid image has more levels than this, and the skips below shift by them	*/
+	if( has_mipmap && header.dwMipMapCount > 30 )
+		return stbi__errpuc("bad mipmap count", "Corrupt DDS");
+
 	block_pitch = (s->img_x+3) >> 2;
 	num_blocks = block_pitch * ((s->img_y+3) >> 2);
 	/*	let the user know what's going on	*/
@@ -410,6 +419,8 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 		//	passed all the tests, get the RAM for decoding
 		sz = (s->img_x)*(s->img_y)*4*cubemap_faces;
 		dds_data = (unsigned char*)malloc( sz );
+		if( NULL == dds_data )
+			return stbi__errpuc("outofmem", "Out of memory");
 		/*	do this once for each face	*/
 		for( cf = 0; cf < cubemap_faces; ++ cf )
 		{
@@ -424,21 +435,21 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 				if( DXT_family == 1 )
 				{
 					//	DXT1
-					stbi__getn( s, compressed, 8 );
+					if( !stbi__getn( s, compressed, 8 ) ) goto truncated;
 					stbi_decode_DXT1_block( block, compressed );
 				} else if( DXT_family < 4 )
 				{
 					//	DXT2/3
-					stbi__getn( s, compressed, 8 );
+					if( !stbi__getn( s, compressed, 8 ) ) goto truncated;
 					stbi_decode_DXT23_alpha_block ( block, compressed );
-					stbi__getn( s, compressed, 8 );
+					if( !stbi__getn( s, compressed, 8 ) ) goto truncated;
 					stbi_decode_DXT_color_block ( block, compressed );
 				} else
 				{
 					//	DXT4/5
-					stbi__getn( s, compressed, 8 );
+					if( !stbi__getn( s, compressed, 8 ) ) goto truncated;
 					stbi_decode_DXT45_alpha_block ( block, compressed );
-					stbi__getn( s, compressed, 8 );
+					if( !stbi__getn( s, compressed, 8 ) ) goto truncated;
 					stbi_decode_DXT_color_block ( block, compressed );
 				}
 				//	is this a partial block?
@@ -498,11 +509,14 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 		*comp = s->img_n;
 		sz = s->img_x*s->img_y*s->img_n*cubemap_faces;
 		dds_data = (unsigned char*)malloc( sz );
+		if( NULL == dds_data )
+			return stbi__errpuc("outofmem", "Out of memory");
 		/*	do this once for each face	*/
 		for( cf = 0; cf < cubemap_faces; ++ cf )
 		{
 			/*	read the main image for this face	*/
-			stbi__getn( s, &dds_data[cf*s->img_x*s->img_y*s->img_n], s->img_x*s->img_y*s->img_n );
+			if( !stbi__getn( s, &dds_data[cf*s->img_x*s->img_y*s->img_n], s->img_x*s->img_y*s->img_n ) )
+				goto truncated;
 			/*	done reading and decoding the main image...
 				stbi__skip MIPmaps if present	*/
 			if( has_mipmap )
@@ -565,6 +579,10 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 	}
 	//	OK, done
 	return dds_data;
+
+truncated:
+	free( dds_data );
+	return stbi__errpuc("truncated", "Corrupt DDS");
 }
 
 #ifndef STBI_NO_STDIO

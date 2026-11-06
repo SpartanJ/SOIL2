@@ -71,6 +71,11 @@ static int stbi__qoi_info(stbi__context *s, int *x, int *y, int *comp)
    int channels   = stbi__get8(s);       // 3 = RGB, 4 = RGBA
    int colorspace = stbi__get8(s) != 0;  // 0 = sRGB with linear alpha, 1 = all channels linear
 
+   if (channels != 3 && channels != 4) {
+      stbi__rewind(s);
+      return 0;
+   }
+
    if (comp) *comp = channels;
 
    return 1 + colorspace;
@@ -174,8 +179,11 @@ static void *stbi__qoi_load(stbi__context *s, int *x, int *y, int *comp, int req
       }
       else {
          int run = tag & 0x3f;
-         if (&dst[run * s->img_n] > end)
-            break;
+         // the run writes one more pixel below, after this block
+         if ((end - dst) / s->img_n < run + 1) {
+            STBI_FREE(out);
+            return stbi__errpuc("bad run", "Corrupt QOI");
+         }
 
          if (s->img_n == 3) {
             int i;

@@ -1317,7 +1317,11 @@ static void stbi__vertical_flip_slices(void *image, int w, int h, int z, int byt
 static unsigned char *stbi__load_and_postprocess_8bit(stbi__context *s, int *x, int *y, int *comp, int req_comp)
 {
    stbi__result_info ri;
-   void *result = stbi__load_main(s, x, y, comp, req_comp, &ri, 8);
+   int dummy;
+   void *result;
+
+   if (!comp) comp = &dummy;
+   result = stbi__load_main(s, x, y, comp, req_comp, &ri, 8);
 
    if (result == NULL)
       return NULL;
@@ -1343,7 +1347,11 @@ static unsigned char *stbi__load_and_postprocess_8bit(stbi__context *s, int *x, 
 static stbi__uint16 *stbi__load_and_postprocess_16bit(stbi__context *s, int *x, int *y, int *comp, int req_comp)
 {
    stbi__result_info ri;
-   void *result = stbi__load_main(s, x, y, comp, req_comp, &ri, 16);
+   int dummy;
+   void *result;
+
+   if (!comp) comp = &dummy;
+   result = stbi__load_main(s, x, y, comp, req_comp, &ri, 16);
 
    if (result == NULL)
       return NULL;
@@ -1502,6 +1510,9 @@ STBIDEF stbi_uc *stbi_load_gif_from_memory(stbi_uc const *buffer, int len, int *
 {
    unsigned char *result;
    stbi__context s;
+   int dummy;
+
+   if (!comp) comp = &dummy;
    stbi__start_mem(&s,buffer,len);
 
    result = (unsigned char*) stbi__load_gif_main(&s, delays, x, y, z, comp, req_comp);

@@ -947,16 +947,44 @@ static void * stbi__pvr_load(stbi__context *s, int *x, int *y, int *comp, int re
 
 	*comp = s->img_n;
 
+	if ( s->img_x == 0 || s->img_y == 0 )
+		return stbi__errpuc("bad size", "Corrupt PVR");
+
+	if ( !stbi__mad3sizes_valid(s->img_x, s->img_y, 4, 0) )
+		return stbi__errpuc("too large", "PVR too large");
+
 	// Load only the first mip map level
-	levelSize = (s->img_x * s->img_y * header.dwBitCount + 7) / 8;
+	// The size comes from the pixel type, it's what the code below will read
+	if ( iscompressed ) {
+		int blkXDim, blkYDim;
+
+		if ( !POWER_OF_2(s->img_x) || !POWER_OF_2(s->img_y) )
+			return stbi__errpuc("bad size", "PVRTC needs power of two dimensions");
+
+		blkXDim = PVRT_MAX(2, (int)s->img_x / (bitmode ? BLK_X_2BPP : BLK_X_4BPP));
+		blkYDim = PVRT_MAX(2, (int)s->img_y / BLK_Y_SIZE);
+		levelSize = blkXDim * blkYDim * sizeof(AMTC_BLOCK_STRUCT);
+	} else {
+		levelSize = s->img_x * s->img_y * s->img_n;
+	}
 
 	// get the raw data
 	pvr_data = (stbi_uc *)malloc( levelSize );
-	stbi__getn( s, pvr_data, levelSize );
+	if ( NULL == pvr_data )
+		return stbi__errpuc("outofmem", "Out of memory");
+
+	if ( !stbi__getn( s, pvr_data, levelSize ) ) {
+		free( pvr_data );
+		return stbi__errpuc("truncated", "Corrupt PVR");
+	}
 
 	// if compressed decompress as RGBA
 	if ( iscompressed ) {
 		pvr_res_data = (stbi_uc *)malloc( s->img_x * s->img_y * 4 );
+		if ( NULL == pvr_res_data ) {
+			free( pvr_data );
+			return stbi__errpuc("outofmem", "Out of memory");
+		}
 		Decompress( (AMTC_BLOCK_STRUCT*)pvr_data, bitmode, s->img_x, s->img_y, 1, (unsigned char*)pvr_res_data );
 		free( pvr_data );
 	} else {
