@@ -244,6 +244,11 @@ static int stbi__dds_info( stbi__context *s, int *x, int *y, int *comp, int *isc
 	int is_compressed,has_alpha;
 	unsigned int flags;
 	DDS_header header={0};
+	int dummy;
+
+	if ( !x ) x = &dummy;
+	if ( !y ) y = &dummy;
+	if ( !comp ) comp = &dummy;
 
 	if( sizeof( DDS_header ) != 128 )
 	{
@@ -349,6 +354,8 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 	int block_pitch, num_blocks;
 	DDS_header header={0};
 	int i, sz, cf;
+	int dummy;
+	if ( !comp ) comp = &dummy;
 	//	load the header
 	if( sizeof( DDS_header ) != 128 )
 	{

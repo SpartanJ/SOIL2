@@ -63,6 +63,11 @@ int      stbi__pvr_test_callbacks      (stbi_io_callbacks const *clbk, void *use
 static int stbi__pvr_info(stbi__context *s, int *x, int *y, int *comp, int * iscompressed )
 {
 	PVR_Texture_Header header={0};
+	int dummy;
+
+	if ( !x ) x = &dummy;
+	if ( !y ) y = &dummy;
+	if ( !comp ) comp = &dummy;
 
 	stbi__getn( s, (stbi_uc*)(&header), sizeof(PVR_Texture_Header) );
 
@@ -883,6 +888,9 @@ static void * stbi__pvr_load(stbi__context *s, int *x, int *y, int *comp, int re
 	int iscompressed = 0;
 	int bitmode = 0;
 	unsigned int levelSize = 0;
+	int dummy;
+
+	if ( !comp ) comp = &dummy;
 
 	stbi__getn( s, (stbi_uc*)(&header), sizeof(PVR_Texture_Header) );
 

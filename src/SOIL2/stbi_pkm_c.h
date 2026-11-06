@@ -144,6 +144,11 @@ static int stbi__pkm_info( stbi__context* s, int* x, int* y, int* comp )
 {
 	stbi_uc header[PKM_HEADER_SIZE];
 	stbi__pkm_header parsed;
+	int dummy;
+
+	if ( !x ) x = &dummy;
+	if ( !y ) y = &dummy;
+	if ( !comp ) comp = &dummy;
 
 	if( !stbi__getn( s, header, PKM_HEADER_SIZE ) ||
 	    !stbi__pkm_parse_header( header, &parsed ) )
@@ -207,6 +212,9 @@ static void* stbi__pkm_load(
 	stbi_uc* compressed;
 	stbi_uc* decoded;
 	size_t compressed_size;
+	int dummy;
+
+	if ( !comp ) comp = &dummy;
 
 	if( !stbi__getn( s, header, PKM_HEADER_SIZE ) ||
 	    !stbi__pkm_parse_header( header, &parsed ) )
