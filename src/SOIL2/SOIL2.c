@@ -651,11 +651,14 @@ unsigned int
 	}
 
 	/* check if the image is HDR */
-	if ( stbi_is_hdr( filename ) )
+	if ( !stbi_is_hdr( filename ) )
 	{
-		/*	try to load the image (only the HDR type) */
-		img = stbi_load( filename, &width, &height, &channels, 4 );
+		result_string_pointer = "Image is missing or is not an HDR image";
+		return 0;
 	}
+
+	/*	try to load the image (only the HDR type) */
+	img = stbi_load( filename, &width, &height, &channels, 4 );
 
 	/*	channels holds the original number of channels, which may have been forced	*/
 	if( NULL == img )
@@ -1572,8 +1575,10 @@ unsigned int SOIL_upload_image_array_to_gl(
 		imgArray->layers
 	);
 
-	if (!tex)
+	if (!tex) {
+		if (unpack != 1) glPixelStorei(GL_UNPACK_ALIGNMENT, unpack);
 		return 0;
+	}
 
 	SOIL_upload_image_array_layers(imgArray, external_fmt);
 	SOIL_setup_texture_params(flags);
@@ -1610,6 +1615,34 @@ static unsigned int SOIL_upload_next_cubemap_face(
 		SOIL_discard_new_texture( tex_id, reuse_texture_ID );
 	}
 	return result;
+}
+
+/* GL MIPmaps need every face in place, and the cube map target. */
+static unsigned int SOIL_finish_cubemap(
+		unsigned int tex_id,
+		unsigned int reuse_texture_ID,
+		unsigned int flags )
+{
+	if( 0 == tex_id || !( flags & SOIL_FLAG_GL_MIPMAPS ) ||
+		query_gen_mipmap_capability() != SOIL_CAPABILITY_PRESENT )
+	{
+		return tex_id;
+	}
+
+	while( glGetError() != GL_NO_ERROR )
+	{
+		/* discard errors caused by earlier OpenGL calls */
+	}
+
+	glBindTexture( SOIL_TEXTURE_CUBE_MAP, tex_id );
+	soilGlGenerateMipmap( SOIL_TEXTURE_CUBE_MAP );
+	if( glGetError() != GL_NO_ERROR )
+	{
+		SOIL_discard_new_texture( tex_id, reuse_texture_ID );
+		result_string_pointer = "Failed to generate cube map mipmaps";
+		return 0;
+	}
+	return tex_id;
 }
 
 unsigned int
@@ -1794,7 +1827,7 @@ unsigned int
 		SOIL_free_image_data( img );
 	}
 	/*	and return the handle, such as it is	*/
-	return tex_id;
+	return SOIL_finish_cubemap( tex_id, reuse_texture_ID, flags );
 }
 
 unsigned int
@@ -1997,7 +2030,7 @@ unsigned int
 		SOIL_free_image_data( img );
 	}
 	/*	and return the handle, such as it is	*/
-	return tex_id;
+	return SOIL_finish_cubemap( tex_id, reuse_texture_ID, flags );
 }
 
 unsigned int
@@ -2047,6 +2080,7 @@ unsigned int
 
 	if ( flags & SOIL_FLAG_ETC1_LOAD_DIRECT )
 	{
+		result_string_pointer = "Direct ETC1 loading does not support cube maps";
 		return 0;
 	}
 
@@ -2153,6 +2187,7 @@ unsigned int
 
 	if ( flags & SOIL_FLAG_ETC1_LOAD_DIRECT )
 	{
+		result_string_pointer = "Direct ETC1 loading does not support cube maps";
 		return 0;
 	}
 
@@ -2326,7 +2361,7 @@ unsigned int
 	/*	and nuke the image and sub-image data	*/
 	SOIL_free_image_data( sub_img );
 	/*	and return the handle, such as it is	*/
-	return tex_id;
+	return SOIL_finish_cubemap( tex_id, reuse_texture_ID, flags );
 }
 
 unsigned int
@@ -2367,6 +2402,7 @@ void check_for_GL_errors( const char *calling_location )
 static int createMipmaps(const unsigned char *const img,
 		int width, int height, int channels,
 		unsigned int flags,
+		unsigned int opengl_texture_type,
 		unsigned int opengl_texture_target,
 		unsigned int internal_texture_format,
 		unsigned int original_texture_format,
@@ -2374,7 +2410,11 @@ static int createMipmaps(const unsigned char *const img,
 {
 	if ( ( flags & SOIL_FLAG_GL_MIPMAPS ) && query_gen_mipmap_capability() == SOIL_CAPABILITY_PRESENT )
 	{
-		soilGlGenerateMipmap(opengl_texture_target);
+		/*	cube maps wait for their last face, see SOIL_finish_cubemap	*/
+		if( opengl_texture_type != SOIL_TEXTURE_CUBE_MAP )
+		{
+			soilGlGenerateMipmap(opengl_texture_target);
+		}
 	}
 	else
 	{
@@ -2490,7 +2530,7 @@ unsigned int
 				/*	clean out the flags that cannot be used with texture rectangles	*/
 				flags &= ~(
 						SOIL_FLAG_POWER_OF_TWO | SOIL_FLAG_MIPMAPS |
-						SOIL_FLAG_TEXTURE_REPEATS
+						SOIL_FLAG_GL_MIPMAPS | SOIL_FLAG_TEXTURE_REPEATS
 					);
 				/*	and change my target	*/
 				opengl_texture_target = SOIL_TEXTURE_RECTANGLE_ARB;
@@ -2789,7 +2829,7 @@ unsigned int
 		/*	are any MIPmaps desired?	*/
 		if( flags & SOIL_FLAG_MIPMAPS || flags & SOIL_FLAG_GL_MIPMAPS )
 		{
-			if( !createMipmaps( NULL != img ? img : data, iwidth, iheight, channels, flags, opengl_texture_target, internal_texture_format, original_texture_format, DXT_mode ) )
+			if( !createMipmaps( NULL != img ? img : data, iwidth, iheight, channels, flags, opengl_texture_type, opengl_texture_target, internal_texture_format, original_texture_format, DXT_mode ) )
 			{
 				/*	a filter that expects MIPmaps would leave the texture incomplete	*/
 				if ( 1 != unpack_aligment )
@@ -3912,19 +3952,18 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		}
 	}
 
+	const unsigned int faces = ogl_target_end - ogl_target_start + 1;
+	if ( (unsigned long long)faces * DDS_source_full_size > (unsigned int)buffer_length - buffer_index )
+	{
+		result_string_pointer = "DDS file was too small for expected image data";
+		return 0;
+	}
+
 	/*	got the image data RAM, create or use an existing OpenGL texture handle	*/
 	unsigned int tex_ID = reuse_texture_ID;
 	if( tex_ID == 0 ) { glGenTextures( 1, &tex_ID ); }
 	/*  bind an OpenGL texture ID	*/
 	glBindTexture( opengl_texture_type, tex_ID );
-
-	const unsigned int faces = ogl_target_end - ogl_target_start + 1;
-	if ( (unsigned long long)faces * DDS_source_full_size > (unsigned int)buffer_length - buffer_index )
-	{
-		glDeleteTextures( 1, &tex_ID );
-		result_string_pointer = "DDS file was too small for expected image data";
-		return 0;
-	}
 
 	if( !block_compressed )
 	{
@@ -3932,6 +3971,7 @@ unsigned int SOIL_direct_load_DDS_from_memory(
 		unsigned char * DDS_data = (unsigned char*) malloc( DDS_main_size );
 		if( NULL == DDS_data )
 		{
+			SOIL_discard_new_texture( tex_ID, reuse_texture_ID );
 			result_string_pointer = "malloc failed";
 			return 0;
 		}
@@ -4388,6 +4428,11 @@ unsigned int SOIL_direct_load_PVR_from_memory( const unsigned char* const buffer
 		return 0;
 	}
 
+	while( glGetError() != GL_NO_ERROR )
+	{
+		/* discard errors caused by earlier OpenGL calls */
+	}
+
 	// load the texture up
 	tex_ID = reuse_texture_ID;
 	if( tex_ID == 0 )
@@ -4398,6 +4443,7 @@ unsigned int SOIL_direct_load_PVR_from_memory( const unsigned char* const buffer
 	glBindTexture( opengl_texture_type, tex_ID );
 
 	if( glGetError() ) {
+		SOIL_discard_new_texture( tex_ID, reuse_texture_ID );
 		result_string_pointer = "failed: glBindTexture() failed.";
 		return 0;
 	}
@@ -4457,6 +4503,7 @@ unsigned int SOIL_direct_load_PVR_from_memory( const unsigned char* const buffer
 				{
 					glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_aligment);
 				}
+				SOIL_discard_new_texture( tex_ID, reuse_texture_ID );
 				return 0;
 			}
 
@@ -4506,6 +4553,7 @@ unsigned int SOIL_direct_load_PVR_from_memory( const unsigned char* const buffer
 			glTexParameteri( opengl_texture_type, GL_TEXTURE_WRAP_T, clamp_mode );
 			glTexParameteri( opengl_texture_type, SOIL_TEXTURE_WRAP_R, clamp_mode );
 		}
+		result_string_pointer = "PVR texture loaded";
 	}
 
 	return tex_ID;

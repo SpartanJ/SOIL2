@@ -896,12 +896,12 @@ static void * stbi__pvr_load(stbi__context *s, int *x, int *y, int *comp, int re
 
 	// Check the header size
 	if ( header.dwHeaderSize != sizeof(PVR_Texture_Header) ) {
-		return NULL;
+		return stbi__errpuc("bad header", "Corrupt PVR");
 	}
 
 	// Check the magic identifier
 	if ( header.dwPVR != PVRTEX_IDENTIFIER ) {
-		return NULL;
+		return stbi__errpuc("bad header", "Corrupt PVR");
 	}
 
 	*x = s->img_x = header.dwWidth;
@@ -942,7 +942,7 @@ static void * stbi__pvr_load(stbi__context *s, int *x, int *y, int *comp, int re
 			break;
 		case OGL_RGB_555:
 		default:
-			return NULL;
+			return stbi__errpuc("unsupported", "PVR pixel type not supported");
 	}
 
 	*comp = s->img_n;

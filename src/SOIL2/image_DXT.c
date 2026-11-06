@@ -52,6 +52,7 @@ int
 	unsigned char *DDS_data;
 	DDS_header header;
 	int DDS_size;
+	int written;
 	/*	error check	*/
 	if( (NULL == filename) ||
 		(width < 1) || (height < 1) ||
@@ -69,6 +70,10 @@ int
 	{
 		/*	has alpha, so use DXT5	*/
 		DDS_data = convert_image_to_DXT5( data, width, height, channels, &DDS_size );
+	}
+	if( NULL == DDS_data )
+	{
+		return 0;
 	}
 	/*	save it	*/
 	memset( &header, 0, sizeof( DDS_header ) );
@@ -95,12 +100,13 @@ int
 		free( DDS_data );
 		return 0;
 	}
-	fwrite( &header, sizeof( DDS_header ), 1, fout );
-	fwrite( DDS_data, 1, DDS_size, fout );
-	fclose( fout );
+	written = ( fwrite( &header, sizeof( DDS_header ), 1, fout ) == 1 ) &&
+		( fwrite( DDS_data, 1, DDS_size, fout ) == (size_t)DDS_size );
+	/*	fclose flushes, so a full disk can show up here	*/
+	written = ( fclose( fout ) == 0 ) && written;
 	/*	done	*/
 	free( DDS_data );
-	return 1;
+	return written;
 }
 
 unsigned char* convert_image_to_DXT1(

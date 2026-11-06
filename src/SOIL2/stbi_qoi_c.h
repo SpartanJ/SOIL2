@@ -121,7 +121,7 @@ int stbi__qoi_info_from_file(FILE *f, int *x, int *y, int *comp)
 static void *stbi__qoi_load(stbi__context *s, int *x, int *y, int *comp, int req_comp, stbi__result_info *ri)
 {
    if (!stbi__qoi_info(s, (int*)&s->img_x, (int*)&s->img_y, &s->img_n))
-      return NULL;
+      return stbi__errpuc("bad header", "Corrupt QOI");
 
    if (req_comp == 3 || req_comp == 4)
       s->img_n = req_comp;

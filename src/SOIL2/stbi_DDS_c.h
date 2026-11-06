@@ -363,18 +363,18 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 	}
 	stbi__getn( s, (stbi_uc*)(&header), 128 );
 	//	and do some checking
-	if( header.dwMagic != (('D' << 0) | ('D' << 8) | ('S' << 16) | (' ' << 24)) ) return NULL;
-	if( header.dwSize != 124 ) return NULL;
+	if( header.dwMagic != (('D' << 0) | ('D' << 8) | ('S' << 16) | (' ' << 24)) ) return stbi__errpuc("bad header", "Corrupt DDS");
+	if( header.dwSize != 124 ) return stbi__errpuc("bad header", "Corrupt DDS");
 	flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT;
-	if( (header.dwFlags & flags) != (unsigned int)flags ) return NULL;
+	if( (header.dwFlags & flags) != (unsigned int)flags ) return stbi__errpuc("bad header", "Corrupt DDS");
 	/*	According to the MSDN spec, the dwFlags should contain
 		DDSD_LINEARSIZE if it's compressed, or DDSD_PITCH if
 		uncompressed.  Some DDS writers do not conform to the
 		spec, so I need to make my reader more tolerant	*/
-	if( header.sPixelFormat.dwSize != 32 ) return NULL;
+	if( header.sPixelFormat.dwSize != 32 ) return stbi__errpuc("bad header", "Corrupt DDS");
 	flags = DDPF_FOURCC | DDPF_RGB;
-	if( (header.sPixelFormat.dwFlags & flags) == 0 ) return NULL;
-	if( (header.sCaps.dwCaps1 & DDSCAPS_TEXTURE) == 0 ) return NULL;
+	if( (header.sPixelFormat.dwFlags & flags) == 0 ) return stbi__errpuc("bad header", "Corrupt DDS");
+	if( (header.sCaps.dwCaps1 & DDSCAPS_TEXTURE) == 0 ) return stbi__errpuc("bad header", "Corrupt DDS");
 	//	get the image data
 	s->img_x = header.dwWidth;
 	s->img_y = header.dwHeight;
@@ -412,7 +412,7 @@ static void * stbi__dds_load(stbi__context *s, int *x, int *y, int *comp, int re
 		/*	compressed	*/
 		//	note: header.sPixelFormat.dwFourCC is something like (('D'<<0)|('X'<<8)|('T'<<16)|('1'<<24))
 		DXT_family = 1 + (header.sPixelFormat.dwFourCC >> 24) - '1';
-		if( (DXT_family < 1) || (DXT_family > 5) ) return NULL;
+		if( (DXT_family < 1) || (DXT_family > 5) ) return stbi__errpuc("unsupported", "DDS format can only be uploaded directly");
 		/*	check the expected size...oops, nevermind...
 			those non-compliant writers leave
 			dwPitchOrLinearSize == 0	*/
